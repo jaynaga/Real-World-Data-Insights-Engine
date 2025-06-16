@@ -1,0 +1,17 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Data files
+/data/raw/
+/data/processed/
+
+# Model files
+/models/
+
+# VS Code
+.vscode/
