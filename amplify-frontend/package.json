@@ -1,12 +1,17 @@
 {
   "name": "amplify-frontend",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "dependencies": {
     "@aws-amplify/ui-react": "^3.0.0",
     "aws-amplify": "^5.0.0",
+    "@mui/material": "^5.15.0",
+    "@mui/icons-material": "^5.15.0",
+    "@emotion/react": "^11.11.0",
+    "@emotion/styled": "^11.11.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
+    "react-router-dom": "^6.22.0",
     "react-scripts": "5.0.1"
   },
   "scripts": {
