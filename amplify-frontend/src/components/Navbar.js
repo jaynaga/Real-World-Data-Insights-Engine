@@ -16,9 +16,9 @@ export default function Navbar() {
 
       {/* Center: Navigation Links */}
       <nav className="hidden md:flex space-x-6 text-sm font-medium text-gray-600 dark:text-gray-300">
-        <a href="#" className="hover:text-blue-600 dark:hover:text-blue-400">Home</a>
+        <Link to="/" className="hover:text-blue-600 dark:hover:text-blue-400">Home</Link>
         <Link to="/explore" className="hover:text-blue-600 dark:hover:text-blue-400">Explore</Link>
-        <a href="#" className="hover:text-blue-600 dark:hover:text-blue-400">Projects</a>
+        <Link to="/projects" className="hover:text-blue-600 dark:hover:text-blue-400">Projects</Link>
       </nav>
 
       {/* Right: Icons */}

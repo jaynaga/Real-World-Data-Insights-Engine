@@ -14,6 +14,7 @@ module.exports = {
         card: {
           light: '#f9fafb',
           dark: '#2d3748', // Tailwind gray-700
+          'hover-dark': '#374151', // Tailwind gray-800, good for white text
         },
         textPrimary: {
           light: '#111827', // Tailwind gray-900

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import StatCard from '../components/StatCard';
-import QuickAction from '../components/QuickAction';
-import ActivityFeed from '../components/ActivityFeed';
-import Navbar from '../components/Navbar'; // already imported
-import '../styles/tokens.css';
+import StatCard from './widgets/StatCard';
+import QuickAction from './widgets/QuickAction';
+import ActivityFeed from './widgets/ActivityFeed';
+import Navbar from '../../components/Navbar';
+import '../../styles/tokens.css';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({ dashboards: 0, bookmarks: 0, uploads: 0, reports: 0 });
