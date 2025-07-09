@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import '../styles/tokens.css';
 
 export default function Upload() {
   const [name, setName] = useState("");
@@ -14,14 +15,14 @@ export default function Upload() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+    <div className="flex items-center justify-center min-h-screen page-bg">
       <form
         onSubmit={handleSubmit}
-        className="bg-white p-8 rounded shadow-md w-full max-w-md"
+        className="card w-full max-w-md"
       >
-        <h2 className="text-2xl font-bold mb-6 text-center">Upload Dataset</h2>
+        <h2 className="text-2xl font-bold mb-6 text-center text-textPrimary-light dark:text-textPrimary-dark">Upload Dataset</h2>
         <input
-          className="w-full mb-4 p-2 border rounded"
+          className="w-full mb-4 p-2 border-default rounded"
           type="text"
           placeholder="Dataset Name"
           value={name}
@@ -29,20 +30,20 @@ export default function Upload() {
           required
         />
         <textarea
-          className="w-full mb-4 p-2 border rounded"
+          className="w-full mb-4 p-2 border-default rounded"
           placeholder="Description"
           value={desc}
           onChange={(e) => setDesc(e.target.value)}
           required
         />
         <input
-          className="w-full mb-6"
+          className="w-full mb-6 border-default rounded"
           type="file"
           onChange={(e) => setFile(e.target.files[0])}
         />
         <button
-          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
           type="submit"
+          className="btn-accent w-full mt-2"
         >
           Upload
         </button>

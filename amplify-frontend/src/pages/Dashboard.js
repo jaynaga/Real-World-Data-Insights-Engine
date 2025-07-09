@@ -1,26 +1,65 @@
-import React from "react";
-import { useAuth } from "../context/AuthContext";
+import React, { useEffect, useState } from 'react';
+import StatCard from '../components/StatCard';
+import QuickAction from '../components/QuickAction';
+import ActivityFeed from '../components/ActivityFeed';
+import Navbar from '../components/Navbar'; // already imported
+import '../styles/tokens.css';
 
-const mockDatasets = [
-  { id: 1, name: "Mental Health Survey 2023", description: "National survey data" },
-  { id: 2, name: "Youth Wellbeing Study", description: "Adolescent mental health" },
-];
+export default function DashboardPage() {
+  const [stats, setStats] = useState({ dashboards: 0, bookmarks: 0, uploads: 0, reports: 0 });
+  const [activities, setActivities] = useState([]);
 
-export default function Dashboard() {
-  const { user } = useAuth();
+  useEffect(() => {
+    setStats({ dashboards: 12, bookmarks: 28, uploads: 5, reports: 34 });
+    setActivities([
+      { id: 1, type: 'dashboard', text: 'Created dashboard “Mental Health Trends Q2”', timestamp: '2 hours ago' },
+      { id: 2, type: 'download', text: 'Downloaded “National Mental Health Survey 2022”', timestamp: '5 hours ago' },
+      { id: 3, type: 'upload', text: 'Uploaded “Patient_Survey_Data.csv”', timestamp: '1 day ago' },
+      { id: 4, type: 'bookmark', text: 'Bookmarked “Global Mental Health Indicators”', timestamp: '2 days ago' },
+    ]);
+  }, []);
 
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold mb-4">Welcome, {user?.email}!</h1>
-      <h2 className="text-xl font-semibold mb-2">Datasets</h2>
-      <ul className="space-y-2">
-        {mockDatasets.map(ds => (
-          <li key={ds.id} className="p-4 bg-gray-100 rounded shadow">
-            <div className="font-semibold">{ds.name}</div>
-            <div className="text-gray-600">{ds.description}</div>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <>
+      <Navbar />
+      <div className="min-h-screen flex flex-col page-bg dashboard-container p-6 space-y-6">
+        {/* Top Welcome Card */}
+        <div className="flex justify-between items-center card">
+          <div>
+            <h2 className="card-heading text-textPrimary-light dark:text-textPrimary-dark">Welcome back, Sarah!</h2>
+            <p className="subtext text-subtle">Research Analyst • Here's what's happening in your workspace</p>
+          </div>
+          <button className="btn-accent text-sm">+ New Project</button>
+        </div>
+
+        {/* Stats Section */}
+        <div className="grid grid-cols-4 gap-4">
+          <StatCard label="My Dashboards" value={stats.dashboards} icon="📊" />
+          <StatCard label="Bookmarked Datasets" value={stats.bookmarks} icon="🔖" />
+          <StatCard label="Uploaded Files" value={stats.uploads} icon="📁" />
+          <StatCard label="Generated Reports" value={stats.reports} icon="📄" />
+        </div>
+
+        {/* Quick Actions */}
+        <div className="card">
+          <h3 className="section-heading mb-4">Quick Actions</h3>
+          <div className="grid grid-cols-4 gap-4">
+            <QuickAction icon="📊" label="Create Dashboard" />
+            <QuickAction icon="📤" label="Upload CSV" />
+            <QuickAction icon="🔍" label="Browse Datasets" />
+            <QuickAction icon="📄" label="Generate Report" />
+          </div>
+        </div>
+
+        {/* Activity + AI Search */}
+        <div className="grid grid-cols-2 gap-6">
+          <ActivityFeed activities={activities} />
+          <div className="card">
+            <h3 className="section-heading mb-4">AI Search</h3>
+            <p className="body-text">AI search coming soon...</p>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
