@@ -1,32 +1,49 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
-import { ThemeProvider, CssBaseline, Container } from '@mui/material';
-import theme from './theme';
+import { Routes, Route, useLocation } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
-import Footer from './components/Footer';
+import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
-import DataCatalog from './pages/DataCatalog';
-import Visualizations from './pages/Visualizations';
-import About from './pages/About';
-import AuthWrapper from './components/AuthWrapper';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Upload from './pages/Upload';
 
 function App() {
+  const location = useLocation();
+  const isHome = location.pathname === '/';
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthWrapper>
-        <Navbar />
-        <Container maxWidth="lg" sx={{ minHeight: '80vh', py: 4 }}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/catalog" element={<DataCatalog />} />
-            <Route path="/visualizations" element={<Visualizations />} />
-            <Route path="/about" element={<About />} />
-          </Routes>
-        </Container>
-        <Footer />
-      </AuthWrapper>
-    </ThemeProvider>
+    <AuthProvider>
+      {isHome ? (
+        <Routes>
+          <Route path="/" element={<Home />} />
+        </Routes>
+      ) : (
+        <>
+          <Navbar />
+          <div className="max-w-4xl mx-auto min-h-screen py-8 px-4">
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/upload"
+                element={
+                  <ProtectedRoute>
+                    <Upload />
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </div>
+        </>
+      )}
+    </AuthProvider>
   );
 }
 

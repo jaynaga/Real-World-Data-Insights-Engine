@@ -1,0 +1,1 @@
+import{__rest as a}from"tslib";import*as s from"react";import e from"classnames";import{ComponentClassNames as r}from"../shared/constants.js";import{View as m}from"../View/View.js";const t=s.forwardRef(((t,o)=>{var{className:i}=t,c=a(t,["className"]);return s.createElement(m,Object.assign({as:"img",ref:o,className:e(r.Image,i)},c))}));t.displayName="Image";export{t as Image};

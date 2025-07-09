@@ -1,0 +1,1 @@
+import*as a from"react";import e from"classnames";import{View as s}from"../View/View.js";const i=({icon:i,fill:r,className:m})=>a.createElement(s,{as:"span",className:"amplify-rating-icon-container","aria-hidden":"true"},a.createElement(s,{as:"span",className:e(m),color:r},i));i.displayName="RatingIcon";export{i as RatingIcon};

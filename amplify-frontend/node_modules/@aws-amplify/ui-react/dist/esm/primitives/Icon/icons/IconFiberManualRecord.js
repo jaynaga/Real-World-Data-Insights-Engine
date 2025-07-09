@@ -1,0 +1,1 @@
+import{__rest as s}from"tslib";import e from"classnames";import*as t from"react";import{ComponentClassNames as m}from"../../shared/constants.js";import{View as a}from"../../View/View.js";const r=r=>{const{className:o}=r,c=s(r,["className"]);return t.createElement(a,Object.assign({as:"span",width:"1em",height:"1em",className:e(m.Icon,o)},c))};export{r as IconFiberManualRecord};
