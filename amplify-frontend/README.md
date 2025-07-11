@@ -3,10 +3,11 @@
 This directory contains a professional React frontend scaffolded for AWS Amplify integration, suitable for a data commons platform.
 
 ## Features
-- Modern React + Material-UI (MUI) design
+- Modern React + Tailwind CSS design
 - Amplify Auth integration (sign in/sign up)
 - Responsive layout with navigation and footer
-- Pages: Home, Data Catalog, Visualizations, About
+- Modular sections: Dashboard, Explore, Projects, Upload
+- Dynamic routing with React Router (see `src/App.js`)
 - Ready for Amplify API and QuickSight integration
 
 ## Getting Started
@@ -31,10 +32,16 @@ This directory contains a professional React frontend scaffolded for AWS Amplify
    ```
 
 ## Structure
-- `src/components/` – Navbar, Footer, AuthWrapper
-- `src/pages/` – Home, Data Catalog, Visualizations, About
+- `src/components/` – Navbar, Footer, AuthWrapper, ProtectedRoute
+- `src/pages/` – Upload, NotFound
+- `src/sections/` –
+  - `Dashboard/` – Dashboard layout and widgets
+  - `Explore/` – Dataset explorer, sidebar, table, card, overview
+  - `Projects/` – Projects index, project details
 - `src/utils/` – API helpers
-- `src/theme.js` – MUI theme
+- `src/styles/` – Tailwind tokens and custom CSS
+- `src/theme.js` – Theme configuration
+- `src/App.js` – Main routing component
 
 ---
 
