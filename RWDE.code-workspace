@@ -1,0 +1,15 @@
+{
+    "folders": [
+        {
+            "path": "amplify-frontend",
+            "name": "RWDE Frontend"
+        }
+    ],
+    "settings": {
+        "files.exclude": {
+            "**/node_modules": true
+        },
+        "editor.formatOnSave": true,
+        "terminal.integrated.cwd": "${workspaceFolder}"
+    }
+}

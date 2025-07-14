@@ -1,7 +1,8 @@
 import React from 'react';
-import { FaArrowLeft, FaShareAlt, FaDownload } from 'react-icons/fa';
+import { FaArrowLeft, FaShareAlt, FaDownload, FaChartBar } from 'react-icons/fa';
 import { HiOutlinePlusCircle } from 'react-icons/hi';
 import { MdOutlineDashboard } from 'react-icons/md';
+import { Link } from 'react-router-dom';
 
 export default function SingleProject() {
   const datasets = [
@@ -78,6 +79,12 @@ export default function SingleProject() {
         <button className="bg-green-600 text-white px-4 py-2 text-sm rounded flex items-center gap-2">
           <MdOutlineDashboard /> New Dashboard
         </button>
+        <Link 
+          to="visualization"
+          className="bg-purple-600 text-white px-4 py-2 text-sm rounded flex items-center gap-2 hover:bg-purple-700"
+        >
+          <FaChartBar /> Create Visualization
+        </Link>
         <div className="ml-auto flex gap-2">
           <button className="btn-outline text-sm flex items-center gap-1">
             <FaShareAlt /> Share

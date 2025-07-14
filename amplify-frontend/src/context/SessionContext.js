@@ -27,19 +27,19 @@ export function SessionProvider({ children }) {
   };
 
   const logout = () => {
+    localStorage.removeItem('userSession');
     setSession(null);
   };
 
-  const updateSession = (updates) => {
-    setSession(prev => ({
-      ...prev,
-      ...updates,
-      lastUpdated: new Date().toISOString()
-    }));
+  const value = {
+    user: session?.user || null,
+    isAuthenticated: !!session?.isAuthenticated,
+    login,
+    logout
   };
 
   return (
-    <SessionContext.Provider value={{ session, login, logout, updateSession }}>
+    <SessionContext.Provider value={value}>
       {children}
     </SessionContext.Provider>
   );
