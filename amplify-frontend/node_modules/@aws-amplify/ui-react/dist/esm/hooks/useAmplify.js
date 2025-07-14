@@ -1,1 +1,0 @@
-import*as e from"react";import{AmplifyContext as o}from"../components/ThemeProvider/AmplifyContext.js";import{getThemeFromContext as t}from"./useTheme.js";function r(){const r=e.useContext(o);return{theme:t(r)}}export{r as useAmplify};

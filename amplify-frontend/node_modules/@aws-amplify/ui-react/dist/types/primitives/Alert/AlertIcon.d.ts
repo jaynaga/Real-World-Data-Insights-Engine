@@ -1,8 +1,0 @@
-import * as React from 'react';
-import { AlertVariations } from '../types';
-interface AlertIconProps {
-    variation: AlertVariations;
-    ariaHidden?: boolean;
-}
-export declare const AlertIcon: React.FC<AlertIconProps>;
-export {};
