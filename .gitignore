@@ -1,16 +1,16 @@
 # dependencies
 node_modules/
-node_modules/.cache/
-.cache/
-*.pack
-package-lock.json
+**/node_modules/
+**/.cache/
+**/*.pack
+**/package-lock.json
 
-# build
+# build outputs
 dist/
 build/
 coverage/
 
-# environment
+# env files
 .env*
 !.env.example
 
@@ -32,3 +32,8 @@ Thumbs.db
 
 # AWS
 awscliv2.zip
+
+# Development caches
+.npm/
+.eslintcache
+.stylelintcache
