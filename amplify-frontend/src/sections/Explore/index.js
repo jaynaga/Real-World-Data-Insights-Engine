@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { FiFilter, FiSearch } from 'react-icons/fi';
 import { HiOutlineSortAscending } from 'react-icons/hi';
-import Navbar from '../../components/Navbar';
+
 import DatasetTable from './DatasetTable';
 import ExploreSidebar from './ExploreSidebar';
 import SingleDatasetOverview from './SingleDatasetOverview';
@@ -443,7 +443,7 @@ export default function DatasetExplorerPage() {
 
   const MainExplorer = () => (
     <>
-      <Navbar />
+
       <div className="min-h-screen bg-surface-light dark:bg-surface-dark">
         <div className="max-w-7xl mx-auto px-6 py-8">
           {/* Header */}

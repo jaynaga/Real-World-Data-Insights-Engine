@@ -1,0 +1,12 @@
+{
+  "resourceName": "rwdeDatasetStorage",
+  "policyUUID": "d3e9f5c4",
+  "bucketName": "rwde-dev-datasets",
+  "storageAccess": "auth",
+  "guestAccess": [],
+  "authAccess": [
+    "CREATE_AND_UPDATE"
+  ],
+  "triggerFunction": "S3Trigger7d3597dd",
+  "groupAccess": {}
+}

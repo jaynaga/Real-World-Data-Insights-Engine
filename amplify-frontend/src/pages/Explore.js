@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import Navbar from '../components/Navbar';
+
 
 // Using the same mock data as SingleDatasetOverview
 const mockDatasets = [
@@ -27,7 +27,7 @@ const mockDatasets = [
 export default function Explore() {
   return (
     <div className="min-h-screen bg-surface-light dark:bg-surface-dark">
-      <Navbar />
+
       <div className="max-w-7xl mx-auto px-6 py-8">
         <h1 className="text-2xl font-semibold text-textPrimary-light dark:text-textPrimary-dark mb-6">
           Explore Datasets

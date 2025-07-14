@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FiDownload, FiShare2, FiBarChart2, FiMap, FiCalendar, FiUsers, FiTag, FiArrowLeft } from 'react-icons/fi';
 import { HiOutlineDocumentText, HiOutlineGlobe } from 'react-icons/hi';
-import Navbar from '../../components/Navbar';
+
 import '../../styles/tokens.css';
 
 // Mock data for development
@@ -76,7 +76,7 @@ export default function SingleDatasetOverview({ datasets = [] }) {
 
   return (
     <div className="min-h-screen bg-surface-light dark:bg-surface-dark">
-      <Navbar />
+
 
       {/* Header */}
       <div className="bg-white dark:bg-card-dark border-b border-border-light dark:border-border-dark">

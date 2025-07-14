@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FiBell, FiSettings, FiLogOut, FiUploadCloud } from 'react-icons/fi';
 import { FaUserCircle } from 'react-icons/fa';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useSession } from '../context/SessionContext';
+import { useAuth } from '../context/AuthContext';
 
 function NavLink({ to, children }) {
   const location = useLocation();
@@ -24,16 +24,20 @@ function NavLink({ to, children }) {
 }
 
 export default function Navbar() {
-  const { user, logout, isAuthenticated } = useSession();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
-  if (!isAuthenticated) {
+  if (!user) {
     return null;
   }
 

@@ -1,11 +1,43 @@
-// Placeholder for Amplify API integration
-// Example: import { API } from 'aws-amplify';
+import { Storage } from 'aws-amplify';
 
 export async function fetchDatasets() {
-  // Example API call (replace with real endpoint)
-  // return await API.get('apiName', '/datasets');
-  return [
-    { id: 1, name: 'Mental Health Survey 2023', description: 'National survey data.' },
-    { id: 2, name: 'Hospital Admissions', description: 'De-identified hospital data.' }
-  ];
+  try {
+    const files = await Storage.list('processed/');
+    return files.map(file => ({
+      id: file.eTag,
+      name: file.key.split('/').pop(),
+      description: file.size ? `Size: ${(file.size / 1024).toFixed(2)} KB` : '',
+      lastModified: file.lastModified
+    }));
+  } catch (error) {
+    console.error('Error fetching datasets:', error);
+    throw error;
+  }
+}
+
+export async function getUploadUrl(fileName) {
+  try {
+    const key = `user-uploads/${fileName}`;
+    return await Storage.get(key, { expires: 60 });
+  } catch (error) {
+    console.error('Error getting upload URL:', error);
+    throw error;
+  }
+}
+
+export async function uploadFileWithSignedUrl(file, signedUrl) {
+  try {
+    const response = await fetch(signedUrl, {
+      method: 'PUT',
+      body: file,
+      headers: {
+        'Content-Type': file.type
+      }
+    });
+    if (!response.ok) throw new Error('Upload failed');
+    return true;
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    throw error;
+  }
 }

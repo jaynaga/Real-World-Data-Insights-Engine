@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Navbar from '../../components/Navbar';
+
 import { FaProjectDiagram, FaDatabase, FaPlay, FaCheckCircle, FaHeart, FaUserAlt } from 'react-icons/fa';
 import { MdOutlineShare } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
@@ -59,7 +59,7 @@ export default function ProjectsIndexPage() {
 
   return (
     <div className="min-h-screen page-bg text-textPrimary-light dark:text-textPrimary-dark">
-      <Navbar />
+
 
       <div className="px-8 py-6">
         <div className="flex justify-between items-center mb-4">
