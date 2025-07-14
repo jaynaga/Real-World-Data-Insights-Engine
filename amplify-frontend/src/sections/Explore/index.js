@@ -455,7 +455,10 @@ export default function DatasetExplorerPage() {
             </div>
           }
         />
-        <Route path=":datasetId" element={<SingleDatasetOverview />} />
+        <Route 
+          path=":datasetId" 
+          element={<SingleDatasetOverview datasets={datasets} />} 
+        />
       </Routes>
     </>
   );
