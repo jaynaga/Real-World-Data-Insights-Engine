@@ -8,6 +8,334 @@ import ExploreSidebar from './ExploreSidebar';
 import SingleDatasetOverview from './SingleDatasetOverview';
 import '../../styles/tokens.css';
 
+const mockDatasets = [
+  {
+    id: 1,
+    name: 'Mental Health Survey 2023',
+    type: 'Survey Data',
+    size: '1.2GB',
+    records: '15,847',
+    lastUpdated: '2 days ago',
+    description: 'Comprehensive mental health survey data from 2023',
+    tags: ['mental health', 'survey', '2023'],
+    geography: 'North America',
+    demographics: ['Adults (26-64)', 'Young Adults (18-25)'],
+    date: '2023-06-15'
+  },
+  {
+    id: 2,
+    name: 'Pediatric Health Records 2024',
+    type: 'Clinical Trials',
+    size: '2.1GB',
+    records: '28,932',
+    lastUpdated: '1 day ago',
+    description: 'Clinical trials data focusing on pediatric healthcare innovations',
+    tags: ['pediatric', 'clinical', 'healthcare'],
+    geography: 'Europe',
+    demographics: ['Children (0-12)'],
+    date: '2024-01-05'
+  },
+  {
+    id: 3,
+    name: 'Education Achievement Study',
+    type: 'Longitudinal Studies',
+    size: '950MB',
+    records: '12,450',
+    lastUpdated: '5 days ago',
+    description: '10-year study tracking educational outcomes across different demographics',
+    tags: ['education', 'longitudinal', 'achievement'],
+    geography: 'North America',
+    demographics: ['Children (0-12)', 'Adolescents (13-17)'],
+    date: '2023-12-20'
+  },
+  {
+    id: 4,
+    name: 'Global Demographics 2024',
+    type: 'Census Data',
+    size: '5.1GB',
+    records: '150,000',
+    lastUpdated: '3 days ago',
+    description: 'Worldwide population statistics and demographic trends',
+    tags: ['census', 'global', 'demographics'],
+    geography: 'Asia',
+    demographics: ['All Age Groups'],
+    date: '2024-02-01'
+  },
+  {
+    id: 5,
+    name: 'Healthcare Systems Analysis',
+    type: 'Administrative Data',
+    size: '3.8GB',
+    records: '45,890',
+    lastUpdated: '1 week ago',
+    description: 'Comprehensive analysis of healthcare systems and patient care metrics',
+    tags: ['healthcare', 'administrative', 'analysis'],
+    geography: 'Europe',
+    demographics: ['All Age Groups'],
+    date: '2023-11-30'
+  },
+  {
+    id: 6,
+    name: 'Early Childhood Development',
+    type: 'Survey Data',
+    size: '950MB',
+    records: '8,750',
+    lastUpdated: '4 days ago',
+    description: 'Research on developmental patterns in early childhood',
+    tags: ['children', 'development', 'psychology'],
+    geography: 'South America',
+    demographics: ['Children (0-12)'],
+    date: '2023-09-15'
+  },
+  {
+    id: 7,
+    name: 'Urban Mobility Patterns',
+    type: 'Survey Data',
+    size: '1.5GB',
+    records: '22,150',
+    lastUpdated: '6 days ago',
+    description: 'Analysis of urban transportation and commuting patterns',
+    tags: ['urban', 'transportation', 'mobility'],
+    geography: 'Europe',
+    demographics: ['Adults (26-64)'],
+    date: '2024-01-10'
+  },
+  {
+    id: 8,
+    name: 'Senior Healthcare Study',
+    type: 'Clinical Trials',
+    size: '2.8GB',
+    records: '35,000',
+    lastUpdated: '8 days ago',
+    description: 'Healthcare research focusing on elderly population',
+    tags: ['elderly', 'healthcare', 'clinical'],
+    geography: 'North America',
+    demographics: ['Seniors (65+)'],
+    date: '2023-12-05'
+  },
+  {
+    id: 9,
+    name: 'Youth Sports Participation',
+    type: 'Longitudinal Studies',
+    size: '750MB',
+    records: '18,500',
+    lastUpdated: '10 days ago',
+    description: 'Long-term study on youth sports engagement and health outcomes',
+    tags: ['sports', 'youth', 'health'],
+    geography: 'Australia/Oceania',
+    demographics: ['Children (0-12)', 'Adolescents (13-17)'],
+    date: '2023-11-15'
+  },
+  {
+    id: 10,
+    name: 'Rural Healthcare Access',
+    type: 'Administrative Data',
+    size: '1.7GB',
+    records: '28,900',
+    lastUpdated: '2 weeks ago',
+    description: 'Analysis of healthcare accessibility in rural areas',
+    tags: ['rural', 'healthcare', 'access'],
+    geography: 'Africa',
+    demographics: ['All Age Groups'],
+    date: '2023-10-20'
+  },
+  {
+    id: 11,
+    name: 'Digital Literacy Survey',
+    type: 'Survey Data',
+    size: '890MB',
+    records: '42,000',
+    lastUpdated: '12 days ago',
+    description: 'Assessment of digital literacy across different age groups',
+    tags: ['digital', 'education', 'literacy'],
+    geography: 'Asia',
+    demographics: ['All Age Groups'],
+    date: '2024-01-15'
+  },
+  {
+    id: 12,
+    name: 'Mental Health in Adolescents',
+    type: 'Clinical Trials',
+    size: '1.9GB',
+    records: '15,750',
+    lastUpdated: '9 days ago',
+    description: 'Study on mental health interventions for teenagers',
+    tags: ['mental health', 'adolescents', 'clinical'],
+    geography: 'Europe',
+    demographics: ['Adolescents (13-17)'],
+    date: '2023-12-28'
+  },
+  {
+    id: 13,
+    name: 'Remote Work Patterns 2023',
+    type: 'Survey Data',
+    size: '1.1GB',
+    records: '31,200',
+    lastUpdated: '15 days ago',
+    description: 'Analysis of remote work trends and productivity',
+    tags: ['work', 'remote', 'productivity'],
+    geography: 'North America',
+    demographics: ['Adults (26-64)'],
+    date: '2023-11-01'
+  },
+  {
+    id: 14,
+    name: 'Public Health Initiatives',
+    type: 'Administrative Data',
+    size: '2.3GB',
+    records: '52,800',
+    lastUpdated: '11 days ago',
+    description: 'Evaluation of public health programs and outcomes',
+    tags: ['public health', 'initiatives', 'programs'],
+    geography: 'South America',
+    demographics: ['All Age Groups'],
+    date: '2024-01-08'
+  },
+  {
+    id: 15,
+    name: 'Student Performance Metrics',
+    type: 'Longitudinal Studies',
+    size: '1.4GB',
+    records: '25,600',
+    lastUpdated: '7 days ago',
+    description: 'Long-term tracking of student academic performance',
+    tags: ['education', 'performance', 'academic'],
+    geography: 'Asia',
+    demographics: ['Children (0-12)', 'Adolescents (13-17)'],
+    date: '2023-12-15'
+  },
+  {
+    id: 16,
+    name: 'Vaccination Coverage 2024',
+    type: 'Census Data',
+    size: '4.2GB',
+    records: '128,000',
+    lastUpdated: '4 days ago',
+    description: 'National vaccination rates and coverage statistics',
+    tags: ['healthcare', 'vaccination', 'public health'],
+    geography: 'Europe',
+    demographics: ['All Age Groups'],
+    date: '2024-02-05'
+  },
+  {
+    id: 17,
+    name: 'Working Parents Study',
+    type: 'Survey Data',
+    size: '980MB',
+    records: '19,500',
+    lastUpdated: '13 days ago',
+    description: 'Research on work-life balance for parents',
+    tags: ['work', 'family', 'balance'],
+    geography: 'Australia/Oceania',
+    demographics: ['Adults (26-64)'],
+    date: '2023-11-20'
+  },
+  {
+    id: 18,
+    name: 'Elder Care Quality Assessment',
+    type: 'Administrative Data',
+    size: '2.6GB',
+    records: '41,200',
+    lastUpdated: '16 days ago',
+    description: 'Evaluation of elder care facilities and services',
+    tags: ['elder care', 'healthcare', 'quality'],
+    geography: 'North America',
+    demographics: ['Seniors (65+)'],
+    date: '2023-10-25'
+  },
+  {
+    id: 19,
+    name: 'Youth Mental Wellness',
+    type: 'Clinical Trials',
+    size: '1.8GB',
+    records: '23,400',
+    lastUpdated: '8 days ago',
+    description: 'Mental health interventions for young adults',
+    tags: ['mental health', 'youth', 'wellness'],
+    geography: 'Europe',
+    demographics: ['Young Adults (18-25)'],
+    date: '2024-01-12'
+  },
+  {
+    id: 20,
+    name: 'Global Education Access',
+    type: 'Census Data',
+    size: '3.5GB',
+    records: '95,000',
+    lastUpdated: '5 days ago',
+    description: 'Worldwide analysis of education accessibility',
+    tags: ['education', 'global', 'access'],
+    geography: 'Africa',
+    demographics: ['Children (0-12)', 'Adolescents (13-17)'],
+    date: '2024-01-25'
+  },
+  {
+    id: 2,
+    name: 'Clinical Trials Database 2024',
+    type: 'Clinical Trials',
+    size: '2.5GB',
+    records: '25,632',
+    lastUpdated: '1 day ago',
+    description: 'Collection of clinical trial data from various medical research centers',
+    tags: ['clinical', 'medical', 'research'],
+    geography: 'Europe',
+    demographics: ['Adults (26-64)', 'Seniors (65+)'],
+    date: '2024-01-10'
+  },
+  {
+    id: 3,
+    name: 'Youth Education Longitudinal Study',
+    type: 'Longitudinal Studies',
+    size: '800MB',
+    records: '12,450',
+    lastUpdated: '5 days ago',
+    description: 'Multi-year study tracking educational outcomes in youth',
+    tags: ['education', 'youth', 'longitudinal'],
+    geography: 'North America',
+    demographics: ['Children (0-12)', 'Adolescents (13-17)'],
+    date: '2023-12-20'
+  },
+  {
+    id: 4,
+    name: 'Global Population Census 2024',
+    type: 'Census Data',
+    size: '5.1GB',
+    records: '150,000',
+    lastUpdated: '3 days ago',
+    description: 'Comprehensive global population statistics and demographics',
+    tags: ['census', 'population', 'global'],
+    geography: 'Asia',
+    demographics: ['All Age Groups'],
+    date: '2024-02-01'
+  },
+  {
+    id: 5,
+    name: 'Healthcare Administrative Records',
+    type: 'Administrative Data',
+    size: '3.8GB',
+    records: '45,890',
+    lastUpdated: '1 week ago',
+    description: 'Healthcare system administrative data and patient records',
+    tags: ['healthcare', 'administrative', 'medical'],
+    geography: 'Europe',
+    demographics: ['Adults (26-64)', 'Seniors (65+)'],
+    date: '2023-11-30'
+  },
+  {
+    id: 6,
+    name: 'Child Development Study 2023',
+    type: 'Survey Data',
+    size: '950MB',
+    records: '8,750',
+    lastUpdated: '4 days ago',
+    description: 'Research on early childhood development patterns',
+    tags: ['children', 'development', 'psychology'],
+    geography: 'South America',
+    demographics: ['Children (0-12)'],
+    date: '2023-09-15'
+  }
+];
+
 export default function DatasetExplorerPage() {
   const [filters, setFilters] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
@@ -18,448 +346,171 @@ export default function DatasetExplorerPage() {
     direction: 'desc'
   });
 
-  const [datasets, setDatasets] = useState([
-    {
-      id: 1,
-      name: 'Mental Health Survey 2023',
-      type: 'Survey Data',
-      size: '1.2GB',
-      records: '15,847',
-      lastUpdated: '2 days ago',
-      description: 'Comprehensive mental health survey data from 2023',
-      tags: ['mental health', 'survey', '2023'],
-      geography: 'North America',
-      demographics: ['Adults (26-64)', 'Young Adults (18-25)'],
-      date: '2023-06-15'
-    },
-    {
-      id: 2,
-      name: 'Treatment Centers Analysis',
-      type: 'Clinical Trials',
-      size: '850MB',
-      records: '8,234',
-      lastUpdated: '1 week ago',
-      description: 'Analysis of treatment center effectiveness and patient outcomes',
-      tags: ['treatment', 'analytics', 'healthcare'],
-      geography: 'Europe',
-      demographics: ['Adults (26-64)', 'Seniors (65+)'],
-      date: '2023-05-20'
-    },
-    {
-      id: 3,
-      name: 'Demographics Study',
-      type: 'Longitudinal Studies',
-      size: '2.1GB',
-      records: '25,691',
-      lastUpdated: '3 days ago',
-      description: 'Demographic correlations with mental health outcomes',
-      tags: ['demographics', 'research', 'correlation'],
-      geography: 'Asia',
-      demographics: ['Children (0-12)', 'Adolescents (13-17)'],
-      date: '2023-07-01'
-    },
-    {
-      id: 4,
-      name: 'Hospital Admissions 2023',
-      type: 'Administrative Data',
-      size: '1.5GB',
-      records: '12,456',
-      lastUpdated: '5 days ago',
-      description: 'Hospital admission records and patient data',
-      tags: ['hospital', 'admissions', 'medical'],
-      geography: 'North America',
-      demographics: ['Adults (26-64)'],
-      date: '2023-06-30'
-    },
-    {
-      id: 5,
-      name: 'Youth Mental Health Initiative',
-      type: 'Survey Data',
-      size: '750MB',
-      records: '9,876',
-      lastUpdated: '1 day ago',
-      description: 'Comprehensive study of youth mental health trends',
-      tags: ['youth', 'mental health', 'prevention'],
-      geography: 'Europe',
-      demographics: ['Adolescents (13-17)', 'Young Adults (18-25)'],
-      date: '2023-07-12'
-    },
-    {
-      id: 6,
-      name: 'Elderly Care Patterns',
-      type: 'Longitudinal Studies',
-      size: '3.2GB',
-      records: '31,254',
-      lastUpdated: '4 days ago',
-      description: 'Long-term study of elderly care and mental health',
-      tags: ['elderly', 'care', 'longitudinal'],
-      geography: 'Asia',
-      demographics: ['Seniors (65+)'],
-      date: '2023-07-09'
-    },
-    {
-      id: 7,
-      name: 'Global Depression Index',
-      type: 'Census Data',
-      size: '4.5GB',
-      records: '45,123',
-      lastUpdated: '6 hours ago',
-      description: 'Worldwide depression statistics and correlations',
-      tags: ['global', 'depression', 'statistics'],
-      geography: 'Australia/Oceania',
-      demographics: ['Adults (26-64)', 'Seniors (65+)', 'Young Adults (18-25)'],
-      date: '2023-07-13'
-    },
-    {
-      id: 8,
-      name: 'Pediatric Mental Health Records',
-      type: 'Clinical Trials',
-      size: '950MB',
-      records: '7,845',
-      lastUpdated: '2 weeks ago',
-      description: 'Clinical trials data for pediatric mental health treatments',
-      tags: ['pediatric', 'clinical', 'treatment'],
-      geography: 'South America',
-      demographics: ['Children (0-12)'],
-      date: '2023-06-28'
-    },
-    {
-      id: 9,
-      name: 'School Mental Health Programs',
-      type: 'Administrative Data',
-      size: '1.8GB',
-      records: '18,567',
-      lastUpdated: '3 weeks ago',
-      description: 'Analysis of school-based mental health intervention programs',
-      tags: ['education', 'intervention', 'youth'],
-      geography: 'Africa',
-      demographics: ['Children (0-12)', 'Adolescents (13-17)'],
-      date: '2023-06-21'
-    },
-    {
-      id: 10,
-      name: 'Remote Therapy Effectiveness',
-      type: 'Survey Data',
-      size: '675MB',
-      records: '5,934',
-      lastUpdated: '12 hours ago',
-      description: 'Study on the effectiveness of remote therapy sessions',
-      tags: ['remote', 'therapy', 'effectiveness'],
-      geography: 'Europe',
-      demographics: ['Young Adults (18-25)', 'Adults (26-64)'],
-      date: '2023-07-12'
-    },
-    {
-      id: 11,
-      name: 'Workplace Mental Health',
-      type: 'Census Data',
-      size: '2.4GB',
-      records: '28,965',
-      lastUpdated: '8 days ago',
-      description: 'Corporate mental health programs and their impact',
-      tags: ['workplace', 'corporate', 'wellness'],
-      geography: 'North America',
-      demographics: ['Adults (26-64)'],
-      date: '2023-07-05'
-    },
-    {
-      id: 12,
-      name: 'Student Stress Patterns',
-      type: 'Longitudinal Studies',
-      size: '1.1GB',
-      records: '11,234',
-      lastUpdated: '4 days ago',
-      description: 'Long-term study of stress patterns in students',
-      tags: ['students', 'stress', 'academic'],
-      geography: 'Asia',
-      demographics: ['Adolescents (13-17)', 'Young Adults (18-25)'],
-      date: '2023-07-09'
-    },
-    {
-      id: 13,
-      name: 'Community Support Impact',
-      type: 'Administrative Data',
-      size: '925MB',
-      records: '9,123',
-      lastUpdated: '6 days ago',
-      description: 'Impact analysis of community mental health support systems',
-      tags: ['community', 'support', 'impact'],
-      geography: 'Africa',
-      demographics: ['Adults (26-64)', 'Seniors (65+)'],
-      date: '2023-07-07'
-    },
-    {
-      id: 14,
-      name: 'Medication Efficacy Study',
-      type: 'Clinical Trials',
-      size: '3.8GB',
-      records: '42,567',
-      lastUpdated: '1 month ago',
-      description: 'Clinical trials data for new mental health medications',
-      tags: ['medication', 'trials', 'treatment'],
-      geography: 'South America',
-      demographics: ['Adults (26-64)', 'Seniors (65+)'],
-      date: '2023-06-13'
-    },
-    {
-      id: 15,
-      name: 'Rural Mental Health Access',
-      type: 'Census Data',
-      size: '1.6GB',
-      records: '16,789',
-      lastUpdated: '5 days ago',
-      description: 'Study of mental health care access in rural areas',
-      tags: ['rural', 'access', 'healthcare'],
-      geography: 'Australia/Oceania',
-      demographics: ['Adults (26-64)', 'Seniors (65+)'],
-      date: '2023-07-08'
-    }
-  ]);
+  // Shared dataset state that will be available to all child routes
+  const [datasets] = useState(mockDatasets);
 
-  const sortOptions = [
-    { field: 'type', label: 'Type' },
-    { field: 'size', label: 'Size' },
-    { field: 'records', label: 'Records' },
-    { field: 'lastUpdated', label: 'Last Updated' }
-  ];
-
-  const handleSort = (field) => {
-    setSortConfig((prevSort) => ({
+  // Handler for sorting datasets
+  const handleSort = useCallback((field) => {
+    setSortConfig(prev => ({
       field,
-      direction:
-        prevSort.field === field && prevSort.direction === 'asc'
-          ? 'desc'
-          : 'asc',
+      direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc'
     }));
-  };
+  }, []);
 
-  const applyFilters = (data) => {
-    return data.filter(dataset => {
-      // Check if any filters are actually selected
-      const hasGeographyFilters = filters.geography && Object.values(filters.geography).some(value => value);
-      const hasDataTypeFilters = filters.dataType && Object.values(filters.dataType).some(value => value);
-      const hasDemographicFilters = filters.demographics && Object.values(filters.demographics).some(value => value);
-      const hasDateFilters = filters.dateRange && (filters.dateRange.from || filters.dateRange.to);
+  // Filter and sort datasets
+  const filteredAndSortedDatasets = useMemo(() => {
+    let result = [...datasets];
 
-      // If no filters are selected in a category, skip that filter check
-      // Check geography filter
-      if (hasGeographyFilters) {
-        if (!filters.geography[dataset.geography]) {
-          return false;
-        }
-      }
-
-      // Check data type filter
-      if (hasDataTypeFilters) {
-        if (!filters.dataType[dataset.type]) {
-          return false;
-        }
-      }
-
-      // Check demographics filter
-      if (hasDemographicFilters) {
-        const hasMatchingDemographic = dataset.demographics.some(
-          demo => filters.demographics[demo]
-        );
-        if (!hasMatchingDemographic) {
-          return false;
-        }
-      }
-
-      // Check date range filter
-      if (hasDateFilters) {
-        const datasetDate = new Date(dataset.date);
-        if (filters.dateRange.from && new Date(filters.dateRange.from) > datasetDate) {
-          return false;
-        }
-        if (filters.dateRange.to && new Date(filters.dateRange.to) < datasetDate) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  };
-
-  const sortDatasets = (dataToSort) => {
-    return [...dataToSort].sort((a, b) => {
-      let aValue = a[sortConfig.field];
-      let bValue = b[sortConfig.field];
-
-      // Handle special cases for size and records
-      if (sortConfig.field === 'size') {
-        aValue = parseFloat(aValue.replace('GB', '').replace('MB', '')) * (aValue.includes('GB') ? 1000 : 1);
-        bValue = parseFloat(bValue.replace('GB', '').replace('MB', '')) * (bValue.includes('GB') ? 1000 : 1);
-      } else if (sortConfig.field === 'records') {
-        aValue = parseInt(aValue.replace(',', ''));
-        bValue = parseInt(bValue.replace(',', ''));
-      }
-
-      if (sortConfig.direction === 'asc') {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
-    });
-  };
-
-  // Memoized search, filter, and sort function
-  const filteredAndSortedDatasets = useCallback(() => {
-    let filtered = datasets;
+    // Apply filters
+    if (Object.keys(filters).length > 0) {
+      result = result.filter(dataset => {
+        return Object.entries(filters).every(([key, value]) => {
+          if (!value || value.length === 0) return true;
+          if (Array.isArray(value)) {
+            return value.some(v => dataset[key]?.includes(v));
+          }
+          return dataset[key] === value;
+        });
+      });
+    }
 
     // Apply search
     if (searchQuery) {
-      const searchTerm = searchQuery.toLowerCase();
-      filtered = filtered.filter(dataset => 
-        dataset.name?.toLowerCase().includes(searchTerm) ||
-        dataset.description?.toLowerCase().includes(searchTerm) ||
-        dataset.type?.toLowerCase().includes(searchTerm) ||
-        dataset.tags?.some(tag => tag.toLowerCase().includes(searchTerm))
+      const query = searchQuery.toLowerCase();
+      result = result.filter(dataset => 
+        dataset.name.toLowerCase().includes(query) ||
+        dataset.description.toLowerCase().includes(query) ||
+        dataset.tags.some(tag => tag.toLowerCase().includes(query))
       );
     }
 
-    // Apply filters
-    filtered = applyFilters(filtered);
-
     // Apply sort
-    return sortDatasets(filtered);
-  }, [datasets, searchQuery, filters, sortConfig]);
+    if (sortConfig.field) {
+      result.sort((a, b) => {
+        // Special handling for lastUpdated field
+        if (sortConfig.field === 'lastUpdated') {
+          const getTimeValue = (str) => {
+            const num = parseInt(str);
+            if (str.includes('day')) return num * 24 * 60;
+            if (str.includes('week')) return num * 7 * 24 * 60;
+            return num;
+          };
+          const timeA = getTimeValue(a[sortConfig.field]);
+          const timeB = getTimeValue(b[sortConfig.field]);
+          return sortConfig.direction === 'asc' ? timeA - timeB : timeB - timeA;
+        }
+        // Special handling for size field
+        else if (sortConfig.field === 'size') {
+          const getSizeInMB = (str) => {
+            const num = parseFloat(str);
+            return str.includes('GB') ? num * 1024 : num;
+          };
+          const sizeA = getSizeInMB(a[sortConfig.field]);
+          const sizeB = getSizeInMB(b[sortConfig.field]);
+          return sortConfig.direction === 'asc' ? sizeA - sizeB : sizeB - sizeA;
+        }
+        // Special handling for records field
+        else if (sortConfig.field === 'records') {
+          const getRecordCount = (str) => parseInt(str.replace(/,/g, ''));
+          const recordsA = getRecordCount(a[sortConfig.field]);
+          const recordsB = getRecordCount(b[sortConfig.field]);
+          return sortConfig.direction === 'asc' ? recordsA - recordsB : recordsB - recordsA;
+        }
+        // Default sorting for other fields
+        else {
+          if (a[sortConfig.field] < b[sortConfig.field]) {
+            return sortConfig.direction === 'asc' ? -1 : 1;
+          }
+          if (a[sortConfig.field] > b[sortConfig.field]) {
+            return sortConfig.direction === 'asc' ? 1 : -1;
+          }
+          return 0;
+        }
+      });
+    }
 
-  const handleSearch = (e) => {
-    setSearchQuery(e.target.value);
-  };
+    return result;
+  }, [datasets, filters, searchQuery, sortConfig]);
 
-  // Calculate active filter count
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-    
-    // Count geography filters
-    if (filters.geography) {
-      count += Object.values(filters.geography).filter(Boolean).length;
-    }
-    
-    // Count data type filters
-    if (filters.dataType) {
-      count += Object.values(filters.dataType).filter(Boolean).length;
-    }
-    
-    // Count demographics filters
-    if (filters.demographics) {
-      count += Object.values(filters.demographics).filter(Boolean).length;
-    }
-    
-    // Count date range as one if either from or to is set
-    if (filters.dateRange && (filters.dateRange.from || filters.dateRange.to)) {
-      count += 1;
-    }
-    
-    return count;
-  }, [filters]);
-
-  return (
+  const MainExplorer = () => (
     <>
       <Navbar />
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <div className="flex min-h-screen bg-surface-light dark:bg-surface-dark">
-              <div className={`flex-1 p-6 ${isSidebarOpen ? 'mr-64' : ''} transition-all duration-300`}>
-                <div className="mb-6">
-                  <h1 className="text-2xl font-semibold text-textPrimary-light dark:text-textPrimary-dark mb-2">
-                    Explore Datasets
-                  </h1>
-                  <p className="text-textSecondary-light dark:text-textSecondary-dark">
-                    Browse and analyze available datasets
-                  </p>
-                </div>
+      <div className="min-h-screen bg-surface-light dark:bg-surface-dark">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-2xl font-semibold text-textPrimary-light dark:text-textPrimary-dark mb-2">
+              Dataset Explorer
+            </h1>
+            <p className="text-textSecondary-light dark:text-textSecondary-dark">
+              Browse and explore available datasets
+            </p>
+          </div>
 
-                {/* Search and Filter Bar */}
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="flex-1 relative">
-                    <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-textSecondary-light dark:text-textSecondary-dark" />
-                    <input
-                      type="text"
-                      placeholder="Search datasets..."
-                      value={searchQuery}
-                      onChange={handleSearch}
-                      className="w-full pl-10 pr-4 py-2 bg-white dark:bg-card-dark border border-border-light dark:border-border-dark rounded-lg text-textPrimary-light dark:text-textPrimary-dark focus:outline-none focus:ring-2 focus:ring-accent-light dark:focus:ring-accent-dark"
-                    />
-                  </div>
-                  <div className="relative">
-                    <button 
-                      onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                      className={`flex items-center gap-2 px-4 py-2 text-sm rounded-lg ${
-                        isSidebarOpen 
-                          ? 'bg-accent-light dark:bg-accent-dark text-white' 
-                          : 'bg-white dark:bg-card-dark border border-border-light dark:border-border-dark text-textPrimary-light dark:text-textPrimary-dark hover:bg-gray-50 dark:hover:bg-card-hover-dark'
-                      }`}
-                    >
-                      <FiFilter /> Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
-                    </button>
-                    {activeFilterCount > 0 && !isSidebarOpen && (
-                      <span className="absolute -top-2 -right-2 bg-accent-light dark:bg-accent-dark text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                        {activeFilterCount}
-                      </span>
-                    )}
-                  </div>
-                  <div className="relative">
-                    <button 
-                      onClick={() => setSortMenuAnchor(!sortMenuAnchor)}
-                      className="flex items-center gap-2 px-4 py-2 text-sm bg-white dark:bg-card-dark border border-border-light dark:border-border-dark rounded-lg text-textPrimary-light dark:text-textPrimary-dark hover:bg-gray-50 dark:hover:bg-card-hover-dark"
-                    >
-                      <HiOutlineSortAscending /> Sort
-                    </button>
-                    {sortMenuAnchor && (
-                      <div className="absolute right-0 mt-2 py-2 w-48 bg-white dark:bg-card-dark rounded-lg shadow-lg border border-border-light dark:border-border-dark z-50">
-                        {sortOptions.map(option => (
-                          <button
-                            key={option.field}
-                            onClick={() => {
-                              handleSort(option.field);
-                              setSortMenuAnchor(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-card-hover-dark ${
-                              sortConfig.field === option.field 
-                                ? 'text-accent-light dark:text-accent-dark font-medium'
-                                : 'text-textPrimary-light dark:text-textPrimary-dark'
-                            }`}
-                          >
-                            {option.label}
-                            {sortConfig.field === option.field && (
-                              <span className="ml-2">
-                                {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                              </span>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Dataset Table */}
-                <DatasetTable 
-                  datasets={filteredAndSortedDatasets()} 
-                  sortConfig={sortConfig}
-                  onSort={handleSort}
+          {/* Search and Filter Bar */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex-1 max-w-md">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search datasets..."
+                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-card-dark text-textPrimary-light dark:text-textPrimary-dark focus:ring-2 focus:ring-accent-light dark:focus:ring-accent-dark"
                 />
+                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-textSecondary-light dark:text-textSecondary-dark" />
               </div>
-              <ExploreSidebar 
-                isOpen={isSidebarOpen} 
-                onClose={() => setIsSidebarOpen(false)}
-                filters={filters} 
-                setFilters={setFilters}
-                datasets={datasets}
-              />
             </div>
-          }
-        />
-        <Route 
-          path=":datasetId" 
-          element={<SingleDatasetOverview datasets={datasets} />} 
-        />
-      </Routes>
+            <div className="flex items-center gap-4 ml-4">
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 border border-border-light dark:border-border-dark rounded-lg text-textPrimary-light dark:text-textPrimary-dark hover:bg-gray-50 dark:hover:bg-card-hover-dark"
+              >
+                <FiFilter />
+                Filters
+                {Object.keys(filters).length > 0 && (
+                  <span className="ml-1 px-2 py-0.5 text-xs bg-accent-light dark:bg-accent-dark text-white rounded-full">
+                    {Object.keys(filters).length}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={(e) => setSortMenuAnchor(e.currentTarget)}
+                className="flex items-center gap-2 px-4 py-2 border border-border-light dark:border-border-dark rounded-lg text-textPrimary-light dark:text-textPrimary-dark hover:bg-gray-50 dark:hover:bg-card-hover-dark"
+              >
+                <HiOutlineSortAscending />
+                Sort
+              </button>
+            </div>
+          </div>
+
+          {/* Dataset Table */}
+          <DatasetTable
+            datasets={filteredAndSortedDatasets}
+            sortConfig={sortConfig}
+            onSort={handleSort}
+          />
+        </div>
+      </div>
+
+      {/* Filter Sidebar */}
+      <ExploreSidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        filters={filters}
+        setFilters={setFilters}
+        datasets={datasets}
+      />
     </>
+  );
+
+  return (
+    <Routes>
+      <Route index element={<MainExplorer />} />
+      <Route 
+        path="dataset/:datasetId" 
+        element={<SingleDatasetOverview datasets={datasets} />} 
+      />
+    </Routes>
   );
 }

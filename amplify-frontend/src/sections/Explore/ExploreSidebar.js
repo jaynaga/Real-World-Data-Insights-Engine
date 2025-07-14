@@ -1,10 +1,13 @@
 import React from 'react';
 
-export default function ExploreSidebar({ isOpen, onClose, filters, setFilters, datasets }) {
+export default function ExploreSidebar({ isOpen, onClose, filters = {}, setFilters, datasets = [] }) {
   // Dynamically extract unique values from datasets
   const getUniqueValues = (field) => {
     const values = new Set();
+    if (!Array.isArray(datasets)) return [];
+    
     datasets.forEach(dataset => {
+      if (!dataset) return;
       if (Array.isArray(dataset[field])) {
         dataset[field].forEach(value => values.add(value));
       } else if (dataset[field]) {
@@ -29,7 +32,7 @@ export default function ExploreSidebar({ isOpen, onClose, filters, setFilters, d
         }
       };
 
-      // If all filters in a category are unchecked, remove the category
+      // Remove category if no filters are selected
       if (Object.values(newFilters[category]).every(v => !v)) {
         delete newFilters[category];
       }
@@ -73,113 +76,99 @@ export default function ExploreSidebar({ isOpen, onClose, filters, setFilters, d
     onClose();
   };
 
+  if (!isOpen) return null;
+
   return (
-    <div className={`fixed inset-y-0 right-0 transform ${isOpen ? 'translate-x-0' : 'translate-x-full'} transition-transform duration-300 ease-in-out z-50`}>
-      <aside className="w-64 h-screen min-h-screen p-4 bg-card-light dark:bg-card-dark border-l border-default flex flex-col shadow-lg overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-textPrimary-light dark:text-textPrimary-dark">Filters</h2>
-          <button 
+    <div className="fixed inset-y-0 right-0 w-80 bg-white dark:bg-card-dark border-l border-border-light dark:border-border-dark shadow-xl z-50 overflow-y-auto">
+      <div className="p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-lg font-semibold text-textPrimary-light dark:text-textPrimary-dark">
+            Filters
+          </h2>
+          <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-surface-dark rounded-full"
+            className="text-textSecondary-light dark:text-textSecondary-dark hover:text-textPrimary-light dark:hover:text-textPrimary-dark"
           >
-            ×
+            ✕
           </button>
         </div>
 
-        {regions.length > 0 && (
-          <div className="mb-4">
-            <h3 className="font-medium text-textSecondary-light dark:text-textSecondary-dark mb-2">Geography</h3>
+        {/* Geography Filter */}
+        <div className="mb-6">
+          <h3 className="text-sm font-medium text-textPrimary-light dark:text-textPrimary-dark mb-3">
+            Geography
+          </h3>
+          <div className="space-y-2">
             {regions.map(region => (
-              <label key={region} className="flex items-center text-sm text-textSecondary-light dark:text-textSecondary-dark mb-2">
-                <input 
-                  type="checkbox" 
-                  className="mr-2"
-                  checked={filters.geography?.[region] || false}
+              <label key={region} className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={!!filters.geography?.[region]}
                   onChange={() => handleFilterChange('geography', region)}
+                  className="h-4 w-4 text-accent-light dark:text-accent-dark focus:ring-accent-light dark:focus:ring-accent-dark rounded"
                 />
-                {region}
+                <span className="ml-2 text-sm text-textPrimary-light dark:text-textPrimary-dark">
+                  {region}
+                </span>
               </label>
             ))}
           </div>
-        )}
+        </div>
 
-        {dataTypes.length > 0 && (
-          <div className="mb-4">
-            <h3 className="font-medium text-textSecondary-light dark:text-textSecondary-dark mb-2">Data Type</h3>
+        {/* Data Type Filter */}
+        <div className="mb-6">
+          <h3 className="text-sm font-medium text-textPrimary-light dark:text-textPrimary-dark mb-3">
+            Data Type
+          </h3>
+          <div className="space-y-2">
             {dataTypes.map(type => (
-              <label key={type} className="flex items-center text-sm text-textSecondary-light dark:text-textSecondary-dark mb-2">
-                <input 
-                  type="checkbox" 
-                  className="mr-2"
-                  checked={filters.dataType?.[type] || false}
-                  onChange={() => handleFilterChange('dataType', type)}
+              <label key={type} className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={!!filters.type?.[type]}
+                  onChange={() => handleFilterChange('type', type)}
+                  className="h-4 w-4 text-accent-light dark:text-accent-dark focus:ring-accent-light dark:focus:ring-accent-dark rounded"
                 />
-                {type}
+                <span className="ml-2 text-sm text-textPrimary-light dark:text-textPrimary-dark">
+                  {type}
+                </span>
               </label>
             ))}
           </div>
-        )}
-
-        <div className="mb-4">
-          <h3 className="font-medium text-textSecondary-light dark:text-textSecondary-dark mb-2">Date Range</h3>
-          <div className="flex flex-col gap-2">
-            <div>
-              <label className="text-xs text-textSecondary-light dark:text-textSecondary-dark mb-1 block">From</label>
-              <input 
-                type="date" 
-                value={filters.dateRange?.from || ''}
-                min={dateRange.min?.toISOString().split('T')[0]}
-                max={dateRange.max?.toISOString().split('T')[0]}
-                onChange={(e) => handleDateChange('from', e.target.value)}
-                className="w-full border-default p-1 rounded bg-card-light dark:bg-card-dark text-textPrimary-light dark:text-textPrimary-dark" 
-              />
-            </div>
-            <div>
-              <label className="text-xs text-textSecondary-light dark:text-textSecondary-dark mb-1 block">To</label>
-              <input 
-                type="date" 
-                value={filters.dateRange?.to || ''}
-                min={dateRange.min?.toISOString().split('T')[0]}
-                max={dateRange.max?.toISOString().split('T')[0]}
-                onChange={(e) => handleDateChange('to', e.target.value)}
-                className="w-full border-default p-1 rounded bg-card-light dark:bg-card-dark text-textPrimary-light dark:text-textPrimary-dark" 
-              />
-            </div>
-          </div>
         </div>
 
-        {demographics.length > 0 && (
-          <div className="mb-4">
-            <h3 className="font-medium text-textSecondary-light dark:text-textSecondary-dark mb-2">Demographics</h3>
+        {/* Demographics Filter */}
+        <div className="mb-6">
+          <h3 className="text-sm font-medium text-textPrimary-light dark:text-textPrimary-dark mb-3">
+            Demographics
+          </h3>
+          <div className="space-y-2">
             {demographics.map(demo => (
-              <label key={demo} className="flex items-center text-sm text-textSecondary-light dark:text-textSecondary-dark mb-2">
-                <input 
-                  type="checkbox" 
-                  className="mr-2"
-                  checked={filters.demographics?.[demo] || false}
+              <label key={demo} className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={!!filters.demographics?.[demo]}
                   onChange={() => handleFilterChange('demographics', demo)}
+                  className="h-4 w-4 text-accent-light dark:text-accent-dark focus:ring-accent-light dark:focus:ring-accent-dark rounded"
                 />
-                {demo}
+                <span className="ml-2 text-sm text-textPrimary-light dark:text-textPrimary-dark">
+                  {demo}
+                </span>
               </label>
             ))}
           </div>
-        )}
-
-        <div className="mt-auto pt-4 border-t border-border-light dark:border-border-dark">
-          <button 
-            onClick={handleApply}
-            className="w-full px-4 py-2 bg-accent-light dark:bg-accent-dark text-white rounded-lg hover:bg-accent-dark dark:hover:opacity-90 transition-colors mb-2"
-          >
-            Apply Filters
-          </button>
-          <button 
-            onClick={handleReset}
-            className="w-full px-4 py-2 text-sm text-accent-light dark:text-accent-dark hover:underline"
-          >
-            Reset All
-          </button>
         </div>
-      </aside>
+
+        {/* Clear Filters Button */}
+        {Object.keys(filters).length > 0 && (
+          <button
+            onClick={() => setFilters({})}
+            className="w-full px-4 py-2 text-sm text-accent-light dark:text-accent-dark border border-accent-light dark:border-accent-dark rounded-lg hover:bg-accent-light hover:text-white dark:hover:bg-accent-dark transition-colors"
+          >
+            Clear All Filters
+          </button>
+        )}
+      </div>
     </div>
   );
 }

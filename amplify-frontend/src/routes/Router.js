@@ -15,8 +15,7 @@ function Router() {
       <Route path="/" element={<DashboardPage />} />
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/upload" element={<Upload />} />
-      <Route path="/explore" element={<Explore />} />
-      <Route path="/explore/dataset" element={<SingleDatasetOverview />} />
+      <Route path="/explore/*" element={<Explore />} />
       <Route path="/projects" element={<Projects />} />
       <Route path="/projects/details" element={<ProjectDetails />} />
       <Route path="/projects/:id" element={<SingleProject />} />

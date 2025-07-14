@@ -184,7 +184,7 @@ export default function DatasetTable({ datasets, sortConfig, onSort }) {
                   <td className="px-6 py-4">
                     <div>
                       <Link
-                        to={`${dataset.id}`}
+                        to={`/explore/dataset/${dataset.id}`}
                         className="text-sm font-medium text-textPrimary-light dark:text-textPrimary-dark hover:text-accent-light dark:hover:text-accent-dark"
                       >
                         {dataset.name}

@@ -5,13 +5,13 @@ import { HiOutlineDocumentText, HiOutlineGlobe } from 'react-icons/hi';
 import Navbar from '../../components/Navbar';
 import '../../styles/tokens.css';
 
-export default function SingleDatasetOverview({ datasets }) {
+export default function SingleDatasetOverview({ datasets = [] }) {
   const { datasetId } = useParams();
   const navigate = useNavigate();
 
   const dataset = useMemo(() => {
-    return datasets?.find(d => d.id === parseInt(datasetId)) || null;
-  }, [datasets, datasetId]);
+    return mockDatasets.find(d => d.id === parseInt(datasetId)) || null;
+  }, [datasetId]);
 
   if (!dataset) {
     return (
