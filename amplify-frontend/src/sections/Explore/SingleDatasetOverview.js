@@ -5,6 +5,40 @@ import { HiOutlineDocumentText, HiOutlineGlobe } from 'react-icons/hi';
 import Navbar from '../../components/Navbar';
 import '../../styles/tokens.css';
 
+// Mock data for development
+const mockDatasets = [
+  {
+    id: 1,
+    name: 'Census Data 2020',
+    description: 'Comprehensive demographic data from the 2020 US Census',
+    tags: ['Demographics', 'Census', 'Population'],
+    date: '2023-01-15',
+    lastUpdated: '2023-06-30',
+    contributors: ['John Doe', 'Jane Smith'],
+    type: 'CSV',
+    size: '2.5 GB',
+    geography: 'United States',
+    license: 'Public Domain',
+    records: 1234,
+    views: 5678
+  },
+  {
+    id: 2,
+    name: 'Climate Change Indicators',
+    description: 'Global temperature and climate indicators from 1950-2023',
+    tags: ['Climate', 'Environment', 'Temperature'],
+    date: '2023-03-20',
+    lastUpdated: '2023-07-01',
+    contributors: ['Climate Research Team'],
+    type: 'JSON',
+    size: '1.8 GB',
+    geography: 'Global',
+    license: 'CC BY-SA',
+    records: 987,
+    views: 3456
+  }
+];
+
 export default function SingleDatasetOverview({ datasets = [] }) {
   const { datasetId } = useParams();
   const navigate = useNavigate();
@@ -188,16 +222,9 @@ export default function SingleDatasetOverview({ datasets = [] }) {
               <h2 className="text-lg font-semibold text-textPrimary-light dark:text-textPrimary-dark mb-4">
                 Demographics
               </h2>
-              <div className="space-y-2">
-                {dataset.demographics.map((demo, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center text-textPrimary-light dark:text-textPrimary-dark"
-                  >
-                    <FiUsers className="mr-2 text-textSecondary-light dark:text-textSecondary-dark" />
-                    {demo}
-                  </div>
-                ))}
+              <div className="flex items-center text-textPrimary-light dark:text-textPrimary-dark">
+                <FiUsers className="mr-2 text-textSecondary-light dark:text-textSecondary-dark" />
+                Not specified
               </div>
             </div>
 

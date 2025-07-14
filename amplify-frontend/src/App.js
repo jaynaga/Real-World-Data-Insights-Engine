@@ -1,13 +1,12 @@
 import React, { useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { SessionProvider } from './context/SessionContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardPage from './sections/Dashboard';
 import Upload from './pages/Upload';
-import Explore from './sections/Explore';
+import DatasetExplorerPage from './sections/Explore';
 import Projects, { ProjectDetails } from './sections/Projects';
 import NotFound from './pages/NotFound';
-import SingleDatasetOverview from './sections/Explore/SingleDatasetOverview';
 import Login from './pages/Login';
 import Settings from './pages/Settings';
 import SingleProject from './sections/Projects/SingleProject';
@@ -36,61 +35,65 @@ function AppContent() {
 
   return (
     <Routes>
-      {/* Public routes */}
       <Route path="/login" element={<Login />} />
-      
-      {/* Protected routes */}
-      <Route path="/" element={
-        <ProtectedRoute>
-          <DashboardPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/dashboard" element={
-        <ProtectedRoute>
-          <DashboardPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/upload" element={
-        <ProtectedRoute>
-          <Upload />
-        </ProtectedRoute>
-      } />
-      <Route path="/explore" element={
-        <ProtectedRoute>
-          <Explore />
-        </ProtectedRoute>
-      } />
-      <Route path="/explore/dataset" element={
-        <ProtectedRoute>
-          <SingleDatasetOverview />
-        </ProtectedRoute>
-      } />
-      <Route path="/projects" element={
-        <ProtectedRoute>
-          <Projects />
-        </ProtectedRoute>
-      } />
-      <Route path="/projects/details" element={
-        <ProtectedRoute>
-          <ProjectDetails />
-        </ProtectedRoute>
-      } />
-      <Route path="/projects/:id" element={
-        <ProtectedRoute>
-          <SingleProject />
-        </ProtectedRoute>
-      } />
-      <Route path="/projects/:id/visualization" element={
-        <ProtectedRoute>
-          <ProjectVisualization />
-        </ProtectedRoute>
-      } />
-      <Route path="/settings" element={
-        <ProtectedRoute>
-          <Settings />
-        </ProtectedRoute>
-      } />
-      <Route path="*" element={<NotFound />} />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/explore/*"
+        element={
+          <ProtectedRoute>
+            <DatasetExplorerPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projects"
+        element={
+          <ProtectedRoute>
+            <Projects />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projects/:projectId"
+        element={
+          <ProtectedRoute>
+            <SingleProject />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projects/:projectId/visualize"
+        element={
+          <ProtectedRoute>
+            <ProjectVisualization />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <Settings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/upload"
+        element={
+          <ProtectedRoute>
+            <Upload />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/404" element={<NotFound />} />
+      <Route path="*" element={<Navigate to="/404" replace />} />
     </Routes>
   );
 }

@@ -1,26 +1,42 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
 export default function ExploreSidebar({ isOpen, onClose, filters = {}, setFilters, datasets = [] }) {
-  // Dynamically extract unique values from datasets
-  const getUniqueValues = (field) => {
-    const values = new Set();
-    if (!Array.isArray(datasets)) return [];
+  // Get all filterable fields and their unique values
+  const filterableFields = useMemo(() => {
+    if (!datasets.length) return {};
     
-    datasets.forEach(dataset => {
-      if (!dataset) return;
-      if (Array.isArray(dataset[field])) {
-        dataset[field].forEach(value => values.add(value));
-      } else if (dataset[field]) {
-        values.add(dataset[field]);
+    // Define which fields should be filterable
+    const fieldsToFilter = [
+      { key: 'type', label: 'Data Type' },
+      { key: 'geography', label: 'Region' },
+      { key: 'tags', label: 'Tags' },
+      { key: 'demographics', label: 'Demographics' }
+    ];
+    
+    // Create an object with field names as keys and their unique values as values
+    return fieldsToFilter.reduce((acc, { key, label }) => {
+      const values = new Set();
+      
+      datasets.forEach(dataset => {
+        if (!dataset || !dataset[key]) return;
+        
+        if (Array.isArray(dataset[key])) {
+          dataset[key].forEach(value => values.add(value));
+        } else {
+          values.add(dataset[key]);
+        }
+      });
+      
+      if (values.size > 0) {
+        acc[key] = {
+          label,
+          values: Array.from(values).sort()
+        };
       }
-    });
-    return Array.from(values).sort();
-  };
-
-  // Get unique values for each filter category
-  const regions = getUniqueValues('geography');
-  const dataTypes = getUniqueValues('type');
-  const demographics = getUniqueValues('demographics');
+      
+      return acc;
+    }, {});
+  }, [datasets]);
 
   const handleFilterChange = (category, value) => {
     setFilters(prev => {
@@ -93,71 +109,28 @@ export default function ExploreSidebar({ isOpen, onClose, filters = {}, setFilte
           </button>
         </div>
 
-        {/* Geography Filter */}
-        <div className="mb-6">
-          <h3 className="text-sm font-medium text-textPrimary-light dark:text-textPrimary-dark mb-3">
-            Geography
-          </h3>
-          <div className="space-y-2">
-            {regions.map(region => (
-              <label key={region} className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={!!filters.geography?.[region]}
-                  onChange={() => handleFilterChange('geography', region)}
-                  className="h-4 w-4 text-accent-light dark:text-accent-dark focus:ring-accent-light dark:focus:ring-accent-dark rounded"
-                />
-                <span className="ml-2 text-sm text-textPrimary-light dark:text-textPrimary-dark">
-                  {region}
-                </span>
-              </label>
-            ))}
+        {Object.entries(filterableFields).map(([key, { label, values }]) => (
+          <div key={key} className="mb-6">
+            <h3 className="text-sm font-medium text-textPrimary-light dark:text-textPrimary-dark mb-3">
+              {label}
+            </h3>
+            <div className="space-y-2">
+              {values.map(value => (
+                <label key={value} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={!!filters[key]?.[value]}
+                    onChange={() => handleFilterChange(key, value)}
+                    className="h-4 w-4 text-accent-light dark:text-accent-dark focus:ring-accent-light dark:focus:ring-accent-dark rounded"
+                  />
+                  <span className="ml-2 text-sm text-textPrimary-light dark:text-textPrimary-dark">
+                    {value}
+                  </span>
+                </label>
+              ))}
+            </div>
           </div>
-        </div>
-
-        {/* Data Type Filter */}
-        <div className="mb-6">
-          <h3 className="text-sm font-medium text-textPrimary-light dark:text-textPrimary-dark mb-3">
-            Data Type
-          </h3>
-          <div className="space-y-2">
-            {dataTypes.map(type => (
-              <label key={type} className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={!!filters.type?.[type]}
-                  onChange={() => handleFilterChange('type', type)}
-                  className="h-4 w-4 text-accent-light dark:text-accent-dark focus:ring-accent-light dark:focus:ring-accent-dark rounded"
-                />
-                <span className="ml-2 text-sm text-textPrimary-light dark:text-textPrimary-dark">
-                  {type}
-                </span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {/* Demographics Filter */}
-        <div className="mb-6">
-          <h3 className="text-sm font-medium text-textPrimary-light dark:text-textPrimary-dark mb-3">
-            Demographics
-          </h3>
-          <div className="space-y-2">
-            {demographics.map(demo => (
-              <label key={demo} className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={!!filters.demographics?.[demo]}
-                  onChange={() => handleFilterChange('demographics', demo)}
-                  className="h-4 w-4 text-accent-light dark:text-accent-dark focus:ring-accent-light dark:focus:ring-accent-dark rounded"
-                />
-                <span className="ml-2 text-sm text-textPrimary-light dark:text-textPrimary-dark">
-                  {demo}
-                </span>
-              </label>
-            ))}
-          </div>
-        </div>
+        ))}
 
         {/* Clear Filters Button */}
         {Object.keys(filters).length > 0 && (

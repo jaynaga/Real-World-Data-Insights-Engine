@@ -364,12 +364,21 @@ export default function DatasetExplorerPage() {
     // Apply filters
     if (Object.keys(filters).length > 0) {
       result = result.filter(dataset => {
-        return Object.entries(filters).every(([key, value]) => {
-          if (!value || value.length === 0) return true;
-          if (Array.isArray(value)) {
-            return value.some(v => dataset[key]?.includes(v));
+        return Object.entries(filters).every(([category, selectedValues]) => {
+          // If no values are selected for this category, don't filter
+          if (!selectedValues || Object.keys(selectedValues).length === 0) return true;
+
+          // Get the dataset value for this category
+          const datasetValue = dataset[category];
+          
+          // Handle array values (like tags, demographics)
+          if (Array.isArray(datasetValue)) {
+            // Check if any of the dataset's values for this category are selected in the filters
+            return datasetValue.some(value => selectedValues[value]);
           }
-          return dataset[key] === value;
+          
+          // Handle single values (like type, geography)
+          return selectedValues[datasetValue] === true;
         });
       });
     }
@@ -506,9 +515,9 @@ export default function DatasetExplorerPage() {
 
   return (
     <Routes>
-      <Route index element={<MainExplorer />} />
+      <Route path="/" element={<MainExplorer />} />
       <Route 
-        path="dataset/:datasetId" 
+        path=":datasetId" 
         element={<SingleDatasetOverview datasets={datasets} />} 
       />
     </Routes>
