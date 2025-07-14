@@ -1,19 +1,34 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*.so
-
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints
-
-# Data files
-/data/raw/
-/data/processed/
-
-# Model files
-/models/
-
-# VS Code
-.vscode/
-node_modules/.cache
+# dependencies
 node_modules/
+node_modules/.cache/
+.cache/
+*.pack
+package-lock.json
+
+# build
+dist/
+build/
+coverage/
+
+# environment
+.env*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# AWS
+awscliv2.zip
