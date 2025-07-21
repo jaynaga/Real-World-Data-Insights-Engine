@@ -1,4 +1,20 @@
 {
+  "api": {
+    "rwdeapi": {
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "ainotebookgenerator"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "API Gateway"
+    }
+  },
   "auth": {
     "rwdecb0792dc": {
       "customAuth": false,
@@ -30,6 +46,17 @@
       "build": true,
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
+    },
+    "ainotebookgenerator": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    }
+  },
+  "hosting": {
+    "S3AndCloudFront": {
+      "providerPlugin": "awscloudformation",
+      "service": "S3AndCloudFront"
     }
   },
   "parameters": {
@@ -46,6 +73,30 @@
         {
           "category": "function",
           "resourceName": "S3Trigger7d3597dd"
+        }
+      ]
+    },
+    "AMPLIFY_function_ainotebookgenerator_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "ainotebookgenerator"
+        }
+      ]
+    },
+    "AMPLIFY_function_ainotebookgenerator_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "ainotebookgenerator"
+        }
+      ]
+    },
+    "AMPLIFY_function_ainotebookgenerator_storageRwdedatasetstorageBucketname": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "ainotebookgenerator"
         }
       ]
     }

@@ -9,6 +9,7 @@ import DashboardPage from './sections/Dashboard';
 import Upload from './pages/Upload';
 import DatasetExplorerPage from './sections/Explore';
 import Projects from './sections/Projects';
+import CreateProject from './pages/CreateProject';
 import NotFound from './pages/NotFound';
 import Login from './pages/Login';
 import Settings from './pages/Settings';
@@ -48,8 +49,9 @@ function AppContent() {
         <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
         <Route path="/explore/*" element={<ProtectedRoute><DatasetExplorerPage /></ProtectedRoute>} />
         <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
-        <Route path="/projects/:projectId" element={<ProtectedRoute><SingleProject /></ProtectedRoute>} />
-        <Route path="/projects/:projectId/visualize" element={<ProtectedRoute><ProjectVisualization /></ProtectedRoute>} />
+        <Route path="/projects/create" element={<ProtectedRoute><CreateProject /></ProtectedRoute>} />
+        <Route path="/projects/:id" element={<ProtectedRoute><SingleProject /></ProtectedRoute>} />
+        <Route path="/projects/:id/visualize" element={<ProtectedRoute><ProjectVisualization /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         <Route path="/404" element={<NotFound />} />
         <Route path="*" element={<Navigate to="/404" replace />} />

@@ -1,0 +1,16 @@
+{
+  "httpMethod": "POST",
+  "headers": {
+    "Content-Type": "application/json",
+    "Origin": "https://localhost:3000"
+  },
+  "body": "{\"projectId\":\"test-project-123\",\"goal\":\"Analyze patient outcomes and demographics to identify trends in treatment effectiveness\",\"files\":[{\"name\":\"patients.csv\",\"description\":\"Patient demographics and basic information\"},{\"name\":\"encounters.csv\",\"description\":\"Medical encounters and visit records\"},{\"name\":\"conditions.csv\",\"description\":\"Diagnosed conditions and medical history\"},{\"name\":\"medications.csv\",\"description\":\"Prescribed medications and dosages\"}]}",
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "requestContext": {
+    "httpMethod": "POST",
+    "requestId": "test-request-id",
+    "path": "/generate-notebook",
+    "stage": "dev"
+  }
+}

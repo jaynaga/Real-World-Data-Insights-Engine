@@ -3,6 +3,8 @@ import DashboardPage from './sections/Dashboard';
 import Upload from './pages/Upload';
 import Explore from './sections/Explore';
 import Projects, { ProjectDetails } from './sections/Projects';
+import CreateProject from './pages/CreateProject';
+import TestCreateProject from './pages/TestCreateProject';
 import NotFound from './pages/NotFound';
 import SingleDatasetOverview from './sections/Explore/SingleDatasetOverview';
 import SingleProject from './sections/Projects/SingleProject';
@@ -17,6 +19,8 @@ function Router() {
       <Route path="/upload" element={<Upload />} />
       <Route path="/explore/*" element={<Explore />} />
       <Route path="/projects" element={<Projects />} />
+      <Route path="/projects/create" element={<CreateProject />} />
+      <Route path="/test-create-project" element={<TestCreateProject />} />
       <Route path="/projects/details" element={<ProjectDetails />} />
       <Route path="/projects/:id" element={<SingleProject />} />
       <Route path="/projects/:id/visualization" element={<ProjectVisualization />} />

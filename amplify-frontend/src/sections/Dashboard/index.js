@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import StatCard from './widgets/StatCard';
 import QuickAction from './widgets/QuickAction';
 import ActivityFeed from './widgets/ActivityFeed';
-import DatasetList from '../../components/DatasetList';
+import MyDatasetList from '../../components/MyDatasetList';
 import '../../styles/tokens.css';
 
 export default function DashboardPage() {
@@ -38,9 +38,9 @@ export default function DashboardPage() {
         <StatCard label="Generated Reports" value={stats.reports} icon="📄" />
       </div>
 
-      {/* Available Datasets */}
+      {/* My Datasets */}
       <div className="card">
-        <DatasetList />
+        <MyDatasetList />
       </div>
 
       {/* Quick Actions */}

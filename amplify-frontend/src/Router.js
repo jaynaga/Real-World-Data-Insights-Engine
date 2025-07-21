@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
-import Explore from './pages/Explore';
+import Explore from './sections/Explore';
 import SingleDatasetOverview from './sections/Explore/SingleDatasetOverview';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';

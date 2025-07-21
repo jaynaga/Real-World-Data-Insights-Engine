@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FiUploadCloud, FiFile, FiX, FiPlus, FiDownload } from "react-icons/fi";
+import { FiUploadCloud, FiFile, FiX, FiPlus, FiDownload, FiInfo, FiFileText } from "react-icons/fi";
 import { uploadFile, listUserUploads, getFileUrl } from '../utils/storageUtils';
 import '../styles/tokens.css';
 
@@ -11,11 +11,13 @@ export default function Upload() {
     geography: "North America",
     demographics: [],
     tags: [],
-    file: null
+    files: [], // Multiple files per dataset
+    metadataFiles: [] // Multiple metadata files
   });
   const [uploads, setUploads] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [metadataDragActive, setMetadataDragActive] = useState(false);
   const [currentTag, setCurrentTag] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [errors, setErrors] = useState({});
@@ -64,63 +66,176 @@ export default function Upload() {
     }
   };
 
-  const handleDrag = (e) => {
+  const handleDrag = (e, isMetadata = false) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
+      if (isMetadata) {
+        setMetadataDragActive(true);
+      } else {
+        setDragActive(true);
+      }
     } else if (e.type === "dragleave") {
-      setDragActive(false);
+      if (isMetadata) {
+        setMetadataDragActive(false);
+      } else {
+        setDragActive(false);
+      }
     }
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = (e, isMetadata = false) => {
     e.preventDefault();
     e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFile(e.dataTransfer.files[0]);
+    if (isMetadata) {
+      setMetadataDragActive(false);
+    } else {
+      setDragActive(false);
+    }
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const files = Array.from(e.dataTransfer.files);
+      if (isMetadata) {
+        handleMetadataFiles(files);
+      } else {
+        handleFiles(files);
+      }
     }
   };
 
-  const handleFileInput = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      handleFile(e.target.files[0]);
+  const handleFileInput = (e, isMetadata = false) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const files = Array.from(e.target.files);
+      if (isMetadata) {
+        handleMetadataFiles(files);
+      } else {
+        handleFiles(files);
+      }
     }
   };
 
-  const handleFile = (file) => {
-    if (!file) {
-      setErrors(prev => ({ ...prev, file: "No file selected" }));
-      return;
-    }
+  const handleFiles = (files) => {
+    const validFiles = [];
+    const errors = [];
 
-    if (file.size > 100 * 1024 * 1024) { // 100MB limit
-      setErrors(prev => ({ ...prev, file: "File size must be less than 100MB" }));
-      return;
-    }
+    files.forEach(file => {
+      console.log('Processing file:', {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified
+      });
 
-    // Validate file type
-    const allowedTypes = ['text/csv', 'application/json', 'application/vnd.ms-excel', 
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
-    if (!allowedTypes.includes(file.type)) {
-      setErrors(prev => ({ ...prev, file: "File type not supported. Please upload CSV, JSON, or Excel files." }));
-      return;
-    }
+      // Check for duplicate files
+      const existingFiles = formData.files || [];
+      const isDuplicate = existingFiles.some(existingFile => existingFile.name === file.name);
+      if (isDuplicate) {
+        errors.push(`${file.name}: This file has already been selected`);
+        return;
+      }
 
-    // Clear any previous file errors
-    setErrors(prev => {
-      const { file, ...rest } = prev;
-      return rest;
+      if (file.size > 100 * 1024 * 1024) { // 100MB limit
+        errors.push(`${file.name}: File size must be less than 100MB`);
+        return;
+      }
+
+      // Validate file type for data files
+      const allowedTypes = ['text/csv', 'application/json', 'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+      if (!allowedTypes.includes(file.type)) {
+        errors.push(`${file.name}: File type not supported. Please upload CSV, JSON, or Excel files.`);
+        return;
+      }
+
+      validFiles.push(file);
     });
 
-    setFormData(prev => ({ ...prev, file }));
-    simulateUploadProgress();
+    console.log('Valid files processed:', validFiles.map(f => ({ name: f.name, size: f.size })));
+
+    if (errors.length > 0) {
+      setErrors(prev => ({ ...prev, files: errors.join('; ') }));
+    } else {
+      setErrors(prev => {
+        const { files, ...rest } = prev;
+        return rest;
+      });
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      files: [...(prev.files || []), ...validFiles]
+    }));
   };
 
-  const handleRemoveFile = () => {
-    setFormData(prev => ({ ...prev, file: null }));
-    setUploadProgress(0);
+  const handleMetadataFiles = (files) => {
+    const validFiles = [];
+    const errors = [];
+
+    files.forEach(file => {
+      console.log('Processing metadata file:', {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified
+      });
+
+      // Check for duplicate metadata files
+      const existingMetadataFiles = formData.metadataFiles || [];
+      const isDuplicate = existingMetadataFiles.some(existingFile => existingFile.name === file.name);
+      if (isDuplicate) {
+        errors.push(`${file.name}: This metadata file has already been selected`);
+        return;
+      }
+
+      if (file.size > 50 * 1024 * 1024) { // 50MB limit for metadata
+        errors.push(`${file.name}: Metadata file size must be less than 50MB`);
+        return;
+      }
+
+      // More lenient file types for metadata (PDFs, docs, etc.)
+      const allowedTypes = [
+        'text/csv', 'application/json', 'text/plain', 'application/pdf',
+        'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/markdown', 'application/xml', 'text/xml'
+      ];
+
+      if (!allowedTypes.includes(file.type) && !file.name.match(/\.(txt|md|readme|yml|yaml)$/i)) {
+        errors.push(`${file.name}: Metadata file type not supported. Please upload TXT, PDF, DOC, JSON, CSV, or Markdown files.`);
+        return;
+      }
+
+      validFiles.push(file);
+    });
+
+    console.log('Valid metadata files processed:', validFiles.map(f => ({ name: f.name, size: f.size })));
+
+    if (errors.length > 0) {
+      setErrors(prev => ({ ...prev, metadataFiles: errors.join('; ') }));
+    } else {
+      setErrors(prev => {
+        const { metadataFiles, ...rest } = prev;
+        return rest;
+      });
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      metadataFiles: [...(prev.metadataFiles || []), ...validFiles]
+    }));
+  };
+
+  const handleRemoveFile = (index, isMetadata = false) => {
+    if (isMetadata) {
+      setFormData(prev => ({
+        ...prev,
+        metadataFiles: (prev.metadataFiles || []).filter((_, i) => i !== index)
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        files: (prev.files || []).filter((_, i) => i !== index)
+      }));
+    }
   };
 
   const simulateUploadProgress = () => {
@@ -138,25 +253,25 @@ export default function Upload() {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.name.trim()) newErrors.name = "Name is required";
-    if (!formData.description.trim()) newErrors.description = "Description is required";
-    if (!formData.file) newErrors.file = "File is required";
-    if (formData.demographics.length === 0) newErrors.demographics = "Select at least one demographic";
-    if (formData.tags.length === 0) newErrors.tags = "Add at least one tag";
+    if (!formData.name || !formData.name.trim()) newErrors.name = "Dataset name is required";
+    if (!formData.description || !formData.description.trim()) newErrors.description = "Description is required";
+    if (!formData.files || formData.files.length === 0) newErrors.files = "At least one data file is required";
+    if (!formData.demographics || formData.demographics.length === 0) newErrors.demographics = "Select at least one demographic";
+    if (!formData.tags || formData.tags.length === 0) newErrors.tags = "Add at least one tag";
     return newErrors;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validateForm();
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
 
-    if (!formData.file) {
-      setErrors(prev => ({ ...prev, file: "Please select a file to upload" }));
+    if (!formData.files || formData.files.length === 0) {
+      setErrors(prev => ({ ...prev, files: "Please select at least one data file to upload" }));
       return;
     }
 
@@ -164,22 +279,61 @@ export default function Upload() {
       setUploading(true);
       setErrors({});
 
-      // Generate a clean filename
-      const fileExtension = getFileExtension(formData.file.name);
-      const cleanName = formData.name
+      const cleanName = (formData.name || "untitled")
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-') // Replace any non-alphanumeric chars with dash
-        .replace(/^-+|-+$/g, ''); // Remove leading/trailing dashes
-      const fileName = `${cleanName}-${Date.now()}${fileExtension}`;
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
 
-      console.log('Starting upload:', {
-        fileName,
-        fileType: formData.file.type,
-        fileSize: formData.file.size
+      const timestamp = Date.now();
+      const datasetPath = `user-uploads/raw/${cleanName}-${timestamp}`;
+
+      console.log('Starting dataset upload:', {
+        datasetName: formData.name,
+        datasetPath,
+        dataFileCount: (formData.files || []).length,
+        metadataFileCount: (formData.metadataFiles || []).length
       });
 
-      await uploadFile(formData.file, fileName);
-      
+      // Upload all data files to the dataset folder
+      const files = formData.files || [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileExtension = getFileExtension(file.name);
+        const fileName = `${datasetPath}/${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+
+        console.log(`Uploading data file ${i + 1}/${files.length}:`, fileName);
+        await uploadFile(file, fileName);
+      }
+
+      // Upload metadata files to a metadata subfolder
+      const metadataFiles = formData.metadataFiles || [];
+      for (let i = 0; i < metadataFiles.length; i++) {
+        const file = metadataFiles[i];
+        const fileName = `${datasetPath}/metadata/${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+
+        console.log(`Uploading metadata file ${i + 1}/${metadataFiles.length}:`, fileName);
+        await uploadFile(file, fileName);
+      }
+
+      // Create a dataset info file
+      const datasetInfo = {
+        name: formData.name,
+        description: formData.description,
+        type: formData.type,
+        geography: formData.geography,
+        demographics: formData.demographics || [],
+        tags: formData.tags || [],
+        createdAt: new Date().toISOString(),
+        fileCount: (formData.files || []).length,
+        metadataFileCount: (formData.metadataFiles || []).length,
+        files: (formData.files || []).map(f => f.name),
+        metadataFiles: (formData.metadataFiles || []).map(f => f.name)
+      };
+
+      const infoFileName = `${datasetPath}/dataset-info.json`;
+      const infoBlob = new Blob([JSON.stringify(datasetInfo, null, 2)], { type: 'application/json' });
+      await uploadFile(infoBlob, infoFileName);
+
       // Clear the form
       setFormData({
         name: "",
@@ -188,14 +342,19 @@ export default function Upload() {
         geography: "North America",
         demographics: [],
         tags: [],
-        file: null
+        files: [],
+        metadataFiles: []
       });
       setUploadProgress(0);
       setErrors({});
-      alert("Dataset uploaded successfully!");
+
+      alert(`Dataset "${formData.name}" uploaded successfully with ${(formData.files || []).length} data files and ${(formData.metadataFiles || []).length} metadata files!`);
+
+      // Reload uploads
+      loadUploads();
     } catch (error) {
       console.error('Upload error:', error);
-      setErrors({ 
+      setErrors({
         submit: `Failed to upload dataset: ${error.message}. Please try again or contact support if the issue persists.`
       });
     } finally {
@@ -208,12 +367,28 @@ export default function Upload() {
     return lastDot === -1 ? '' : filename.substring(lastDot);
   };
 
+  const formatFileSize = (bytes) => {
+    if (!bytes || bytes === 0) {
+      return 'Size unknown';
+    }
+
+    if (bytes < 1024) {
+      return `${bytes} B`;
+    } else if (bytes < 1024 * 1024) {
+      return `${(bytes / 1024).toFixed(1)} KB`;
+    } else if (bytes < 1024 * 1024 * 1024) {
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    } else {
+      return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+    }
+  };
+
   const addTag = (e) => {
     e.preventDefault();
-    if (currentTag && !formData.tags.includes(currentTag)) {
+    if (currentTag && !(formData.tags || []).includes(currentTag)) {
       setFormData(prev => ({
         ...prev,
-        tags: [...prev.tags, currentTag.toLowerCase()]
+        tags: [...(prev.tags || []), currentTag.toLowerCase()]
       }));
       setCurrentTag("");
     }
@@ -222,7 +397,7 @@ export default function Upload() {
   const removeTag = (tagToRemove) => {
     setFormData(prev => ({
       ...prev,
-      tags: prev.tags.filter(tag => tag !== tagToRemove)
+      tags: (prev.tags || []).filter(tag => tag !== tagToRemove)
     }));
   };
 
@@ -242,77 +417,192 @@ export default function Upload() {
         <h1 className="text-3xl font-bold mb-8 text-textPrimary-light dark:text-textPrimary-dark">
           Upload Dataset
         </h1>
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* File Upload Area */}
+          {/* Dataset Files Upload Area */}
           <div className="bg-white dark:bg-card-dark rounded-lg p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <FiFile className="text-accent-light dark:text-accent-dark" />
+              <h2 className="text-lg font-semibold text-textPrimary-light dark:text-textPrimary-dark">
+                Dataset Files
+              </h2>
+            </div>
+
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+              <div className="flex items-start gap-2">
+                <FiInfo className="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-blue-800 dark:text-blue-200">
+                  <p className="font-medium mb-1">Important: Multiple File Guidelines</p>
+                  <ul className="list-disc list-inside space-y-1 text-xs">
+                    <li>Upload multiple files <strong>only if they belong to the same dataset</strong></li>
+                    <li>Examples: patient_demographics.csv, patient_visits.csv, patient_medications.csv</li>
+                    <li>Do NOT mix different datasets - create separate uploads for different studies</li>
+                    <li>All files will be grouped together under one dataset name</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
             <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center ${
-                dragActive 
-                  ? 'border-accent-light dark:border-accent-dark bg-blue-50 dark:bg-blue-900/20' 
-                  : 'border-border-light dark:border-border-dark'
-              } ${errors.file ? 'border-red-500 dark:border-red-400' : ''}`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
+              className={`border-2 border-dashed rounded-lg p-8 text-center ${dragActive
+                ? 'border-accent-light dark:border-accent-dark bg-blue-50 dark:bg-blue-900/20'
+                : 'border-border-light dark:border-border-dark'
+                } ${errors.files ? 'border-red-500 dark:border-red-400' : ''}`}
+              onDragEnter={(e) => handleDrag(e, false)}
+              onDragLeave={(e) => handleDrag(e, false)}
+              onDragOver={(e) => handleDrag(e, false)}
+              onDrop={(e) => handleDrop(e, false)}
             >
               <input
                 type="file"
                 id="fileInput"
                 className="hidden"
-                onChange={handleFileInput}
+                multiple
+                onChange={(e) => handleFileInput(e, false)}
                 accept=".csv,.xlsx,.json"
               />
-              
-              {formData.file ? (
-                <div className="flex items-center justify-center space-x-2">
-                  <FiFile className="text-accent-light dark:text-accent-dark" />
-                  <span className="text-textPrimary-light dark:text-textPrimary-dark">
-                    {formData.file.name}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleRemoveFile}
-                    className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+
+              {formData.files && formData.files.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-textPrimary-light dark:text-textPrimary-dark font-medium mb-3">
+                    {formData.files.length} file(s) selected:
+                  </p>
+                  {(formData.files || []).map((file, index) => (
+                    <div key={`data-file-${file.name}-${file.size}-${file.lastModified || Date.now()}-${index}`} className="flex items-center justify-center space-x-2 bg-gray-50 dark:bg-gray-800 rounded p-2">
+                      <FiFile className="text-accent-light dark:text-accent-dark" />
+                      <span className="text-textPrimary-light dark:text-textPrimary-dark text-sm">
+                        {file.name} ({formatFileSize(file.size)})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFile(index, false)}
+                        className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                      >
+                        <FiX />
+                      </button>
+                    </div>
+                  ))}
+                  <label
+                    htmlFor="fileInput"
+                    className="mt-3 inline-block px-4 py-2 bg-gray-600 text-white rounded-md cursor-pointer hover:bg-gray-700"
                   >
-                    <FiX />
-                  </button>
+                    Add More Files
+                  </label>
                 </div>
               ) : (
                 <div className="text-textSecondary-light dark:text-textSecondary-dark">
                   <FiUploadCloud className="mx-auto h-12 w-12 mb-4" />
-                  <p>Drag and drop your file here, or</p>
-                  <label 
+                  <p>Drag and drop your dataset files here, or</p>
+                  <label
                     htmlFor="fileInput"
                     className="mt-2 inline-block px-4 py-2 bg-accent-light dark:bg-accent-dark text-white rounded-md cursor-pointer hover:bg-opacity-90"
                   >
                     Browse Files
                   </label>
                   <p className="mt-2 text-sm">
-                    Supported formats: CSV, XLSX, JSON (max 100MB)
+                    Supported formats: CSV, XLSX, JSON (max 100MB each)
+                  </p>
+                  <p className="text-xs mt-1">
+                    You can select multiple files that belong to the same dataset
                   </p>
                 </div>
               )}
             </div>
-            
-            {errors.file && (
-              <p className="mt-2 text-sm text-red-500 dark:text-red-400">{errors.file}</p>
-            )}
 
-            {uploadProgress > 0 && (
-              <div className="mt-4">
-                <div className="flex justify-between text-sm text-textSecondary-light dark:text-textSecondary-dark mb-1">
-                  <span>Upload progress</span>
-                  <span>{uploadProgress}%</span>
-                </div>
-                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
-                  <div
-                    className="h-2 bg-accent-light dark:bg-accent-dark rounded-full transition-all duration-500"
-                    style={{ width: `${uploadProgress}%` }}
-                  />
+            {errors.files && (
+              <p className="mt-2 text-sm text-red-500 dark:text-red-400">{errors.files}</p>
+            )}
+          </div>
+
+          {/* Metadata Files Upload Area */}
+          <div className="bg-white dark:bg-card-dark rounded-lg p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <FiFileText className="text-purple-600 dark:text-purple-400" />
+              <h2 className="text-lg font-semibold text-textPrimary-light dark:text-textPrimary-dark">
+                Metadata Files (Optional)
+              </h2>
+            </div>
+
+            <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 mb-4">
+              <div className="flex items-start gap-2">
+                <FiInfo className="text-purple-600 dark:text-purple-400 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-purple-800 dark:text-purple-200">
+                  <p className="font-medium mb-1">Metadata Files Include:</p>
+                  <ul className="list-disc list-inside space-y-1 text-xs">
+                    <li>Data dictionaries (variable definitions, coding schemes)</li>
+                    <li>Documentation (study protocols, methodology notes)</li>
+                    <li>README files (usage instructions, data collection notes)</li>
+                    <li>Codebooks (survey instruments, questionnaires)</li>
+                  </ul>
                 </div>
               </div>
+            </div>
+
+            <div
+              className={`border-2 border-dashed rounded-lg p-6 text-center ${metadataDragActive
+                ? 'border-purple-500 dark:border-purple-400 bg-purple-50 dark:bg-purple-900/20'
+                : 'border-border-light dark:border-border-dark'
+                } ${errors.metadataFiles ? 'border-red-500 dark:border-red-400' : ''}`}
+              onDragEnter={(e) => handleDrag(e, true)}
+              onDragLeave={(e) => handleDrag(e, true)}
+              onDragOver={(e) => handleDrag(e, true)}
+              onDrop={(e) => handleDrop(e, true)}
+            >
+              <input
+                type="file"
+                id="metadataInput"
+                className="hidden"
+                multiple
+                onChange={(e) => handleFileInput(e, true)}
+                accept=".pdf,.doc,.docx,.txt,.md,.json,.csv,.xml"
+              />
+
+              {formData.metadataFiles && formData.metadataFiles.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-textPrimary-light dark:text-textPrimary-dark font-medium mb-3">
+                    {formData.metadataFiles.length} metadata file(s) selected:
+                  </p>
+                  {(formData.metadataFiles || []).map((file, index) => (
+                    <div key={`metadata-file-${file.name}-${file.size}-${file.lastModified || Date.now()}-${index}`} className="flex items-center justify-center space-x-2 bg-purple-50 dark:bg-purple-900/20 rounded p-2">
+                      <FiFileText className="text-purple-600 dark:text-purple-400" />
+                      <span className="text-textPrimary-light dark:text-textPrimary-dark text-sm">
+                        {file.name} ({formatFileSize(file.size)})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFile(index, true)}
+                        className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                      >
+                        <FiX />
+                      </button>
+                    </div>
+                  ))}
+                  <label
+                    htmlFor="metadataInput"
+                    className="mt-3 inline-block px-4 py-2 bg-purple-600 text-white rounded-md cursor-pointer hover:bg-purple-700"
+                  >
+                    Add More Metadata
+                  </label>
+                </div>
+              ) : (
+                <div className="text-textSecondary-light dark:text-textSecondary-dark">
+                  <FiFileText className="mx-auto h-10 w-10 mb-3 text-purple-400" />
+                  <p>Drag and drop metadata files here, or</p>
+                  <label
+                    htmlFor="metadataInput"
+                    className="mt-2 inline-block px-4 py-2 bg-purple-600 text-white rounded-md cursor-pointer hover:bg-purple-700"
+                  >
+                    Browse Metadata
+                  </label>
+                  <p className="mt-2 text-sm">
+                    Supported: PDF, DOC, TXT, MD, JSON, CSV, XML (max 50MB each)
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {errors.metadataFiles && (
+              <p className="mt-2 text-sm text-red-500 dark:text-red-400">{errors.metadataFiles}</p>
             )}
           </div>
 
@@ -329,11 +619,10 @@ export default function Upload() {
                   setFormData(prev => ({ ...prev, name: e.target.value }));
                   if (errors.name) setErrors(prev => ({ ...prev, name: null }));
                 }}
-                className={`w-full p-2 rounded-md bg-white dark:bg-card-dark text-textPrimary-light dark:text-textPrimary-dark border ${
-                  errors.name 
-                    ? 'border-red-500 dark:border-red-400' 
-                    : 'border-border-light dark:border-border-dark'
-                } focus:ring-2 focus:ring-accent-light dark:focus:ring-accent-dark`}
+                className={`w-full p-2 rounded-md bg-white dark:bg-card-dark text-textPrimary-light dark:text-textPrimary-dark border ${errors.name
+                  ? 'border-red-500 dark:border-red-400'
+                  : 'border-border-light dark:border-border-dark'
+                  } focus:ring-2 focus:ring-accent-light dark:focus:ring-accent-dark`}
                 required
               />
               {errors.name && (
@@ -351,11 +640,10 @@ export default function Upload() {
                   setFormData(prev => ({ ...prev, description: e.target.value }));
                   if (errors.description) setErrors(prev => ({ ...prev, description: null }));
                 }}
-                className={`w-full p-2 rounded-md bg-white dark:bg-card-dark text-textPrimary-light dark:text-textPrimary-dark border ${
-                  errors.description 
-                    ? 'border-red-500 dark:border-red-400' 
-                    : 'border-border-light dark:border-border-dark'
-                } focus:ring-2 focus:ring-accent-light dark:focus:ring-accent-dark`}
+                className={`w-full p-2 rounded-md bg-white dark:bg-card-dark text-textPrimary-light dark:text-textPrimary-dark border ${errors.description
+                  ? 'border-red-500 dark:border-red-400'
+                  : 'border-border-light dark:border-border-dark'
+                  } focus:ring-2 focus:ring-accent-light dark:focus:ring-accent-dark`}
                 rows="4"
                 required
               />
@@ -405,11 +693,11 @@ export default function Upload() {
                   <label key={demo} className="flex items-center space-x-2">
                     <input
                       type="checkbox"
-                      checked={formData.demographics.includes(demo)}
+                      checked={(formData.demographics || []).includes(demo)}
                       onChange={(e) => {
                         const newDemographics = e.target.checked
-                          ? [...formData.demographics, demo]
-                          : formData.demographics.filter(d => d !== demo);
+                          ? [...(formData.demographics || []), demo]
+                          : (formData.demographics || []).filter(d => d !== demo);
                         setFormData(prev => ({
                           ...prev,
                           demographics: newDemographics
@@ -432,7 +720,7 @@ export default function Upload() {
                 Tags *
               </label>
               <div className="flex flex-wrap gap-2 mb-2">
-                {formData.tags.map(tag => (
+                {(formData.tags || []).map(tag => (
                   <span
                     key={tag}
                     className="inline-flex items-center px-2 py-1 rounded-md bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
@@ -482,30 +770,11 @@ export default function Upload() {
             </div>
           )}
 
-          <div className="flex justify-end gap-4">
-            <button
-              type="button"
-              onClick={() => {
-                setFormData({
-                  name: "",
-                  description: "",
-                  type: "Survey Data",
-                  geography: "North America",
-                  demographics: [],
-                  tags: [],
-                  file: null
-                });
-                setUploadProgress(0);
-                setErrors({});
-              }}
-              className="px-6 py-2 border border-border-light dark:border-border-dark rounded-lg text-textPrimary-light dark:text-textPrimary-dark hover:bg-gray-50 dark:hover:bg-card-hover-dark"
-            >
-              Reset
-            </button>
+          <div className="flex justify-end">
             <button
               type="submit"
               className="px-6 py-2 bg-accent-light dark:bg-accent-dark text-white rounded-lg hover:bg-opacity-90 disabled:opacity-50"
-              disabled={!formData.file || uploadProgress > 0 && uploadProgress < 100 || uploading}
+              disabled={(!formData.files || formData.files.length === 0) || uploading}
             >
               {uploading ? 'Uploading...' : 'Upload Dataset'}
             </button>
@@ -517,7 +786,7 @@ export default function Upload() {
           <h2 className="text-xl font-semibold mb-4 text-textPrimary-light dark:text-textPrimary-dark">
             Recent Uploads
           </h2>
-          
+
           {loading ? (
             <p className="text-textSecondary-light dark:text-textSecondary-dark">Loading...</p>
           ) : uploads.length > 0 ? (
@@ -532,7 +801,7 @@ export default function Upload() {
                           {file.name}
                         </h3>
                         <p className="text-sm text-textSecondary-light dark:text-textSecondary-dark">
-                          {new Date(file.lastModified).toLocaleDateString()} • 
+                          {new Date(file.lastModified).toLocaleDateString()} •
                           {(file.size / 1024).toFixed(2)} KB
                         </p>
                       </div>

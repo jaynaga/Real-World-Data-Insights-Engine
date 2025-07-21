@@ -9,7 +9,8 @@
       "UnauthRoleName": "amplify-rwde-dev-1d45f-unauthRole",
       "StackName": "amplify-rwde-dev-1d45f",
       "StackId": "arn:aws:cloudformation:us-east-1:634739368383:stack/amplify-rwde-dev-1d45f/2ee82f30-60b9-11f0-904f-0e12b1742aa3",
-      "AmplifyAppId": "d19vw9p5r2op8w"
+      "AmplifyAppId": "d19vw9p5r2op8w",
+      "APIGatewayAuthURL": "https://s3.amazonaws.com/amplify-rwde-dev-1d45f-deployment/amplify-cfn-templates/api/APIGatewayAuthStack.json"
     },
     "categories": {
       "auth": {
@@ -19,7 +20,54 @@
         "S3Trigger7d3597dd": {
           "deploymentBucketName": "amplify-rwde-dev-1d45f-deployment",
           "s3Key": "amplify-builds/S3Trigger7d3597dd-68644173577749775a36-build.zip"
+        },
+        "ainotebookgenerator": {
+          "deploymentBucketName": "amplify-rwde-dev-1d45f-deployment",
+          "s3Key": "amplify-builds/ainotebookgenerator-392f503854312b4d674a-build.zip",
+          "storageRwdedatasetstorageBucketname": "rwde-dev-datasets1d45f-dev"
         }
+      },
+      "storage": {
+        "rwdeDatasetStorage": {}
+      },
+      "api": {
+        "rwdeapi": {}
+      }
+    }
+  },
+  "rwde": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-rwde-rwde-37fb9-authRole",
+      "UnauthRoleArn": "arn:aws:iam::634739368383:role/amplify-rwde-rwde-37fb9-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::634739368383:role/amplify-rwde-rwde-37fb9-authRole",
+      "Region": "us-east-1",
+      "DeploymentBucketName": "amplify-rwde-rwde-37fb9-deployment",
+      "UnauthRoleName": "amplify-rwde-rwde-37fb9-unauthRole",
+      "StackName": "amplify-rwde-rwde-37fb9",
+      "StackId": "arn:aws:cloudformation:us-east-1:634739368383:stack/amplify-rwde-rwde-37fb9/a01298c0-65d8-11f0-805c-0affc52e9f07",
+      "AmplifyAppId": "d19vw9p5r2op8w",
+      "APIGatewayAuthURL": "https://s3.amazonaws.com/amplify-rwde-rwde-37fb9-deployment/amplify-cfn-templates/api/APIGatewayAuthStack.json"
+    },
+    "categories": {
+      "auth": {
+        "rwdecb0792dc": {}
+      },
+      "function": {
+        "S3Trigger7d3597dd": {
+          "deploymentBucketName": "amplify-rwde-rwde-37fb9-deployment",
+          "s3Key": "amplify-builds/S3Trigger7d3597dd-68644173577749775a36-build.zip"
+        },
+        "ainotebookgenerator": {
+          "deploymentBucketName": "amplify-rwde-rwde-37fb9-deployment",
+          "s3Key": "amplify-builds/ainotebookgenerator-392f503854312b4d674a-build.zip",
+          "storageRwdedatasetstorageBucketname": "rwde-dev-datasets1d45f-dev"
+        }
+      },
+      "api": {
+        "rwdeapi": {}
+      },
+      "hosting": {
+        "S3AndCloudFront": {}
       },
       "storage": {
         "rwdeDatasetStorage": {}

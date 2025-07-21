@@ -82,11 +82,10 @@ export default function DatasetTable({ datasets, sortConfig, onSort }) {
         <button
           key={i}
           onClick={() => handlePageChange(i)}
-          className={`px-3 py-1 rounded-md ${
-            currentPage === i
+          className={`px-3 py-1 rounded-md ${currentPage === i
               ? 'bg-accent-light dark:bg-accent-dark text-white'
               : 'text-textSecondary-light dark:text-textSecondary-dark hover:bg-gray-100 dark:hover:bg-surface-dark'
-          }`}
+            }`}
         >
           {i}
         </button>
@@ -146,25 +145,25 @@ export default function DatasetTable({ datasets, sortConfig, onSort }) {
                 <th className="px-6 py-3 text-left text-xs font-medium text-textSecondary-light dark:text-textSecondary-dark uppercase tracking-wider sticky top-0 bg-gray-50 dark:bg-surface-dark z-10">
                   Dataset
                 </th>
-                <th 
+                <th
                   className="px-6 py-3 text-left text-xs font-medium text-textSecondary-light dark:text-textSecondary-dark uppercase tracking-wider cursor-pointer hover:text-accent-light dark:hover:text-accent-dark sticky top-0 bg-gray-50 dark:bg-surface-dark z-10"
                   onClick={() => handleSort('type')}
                 >
                   Type {getSortIcon('type')}
                 </th>
-                <th 
+                <th
                   className="px-6 py-3 text-left text-xs font-medium text-textSecondary-light dark:text-textSecondary-dark uppercase tracking-wider cursor-pointer hover:text-accent-light dark:hover:text-accent-dark sticky top-0 bg-gray-50 dark:bg-surface-dark z-10"
                   onClick={() => handleSort('size')}
                 >
                   Size {getSortIcon('size')}
                 </th>
-                <th 
+                <th
                   className="px-6 py-3 text-left text-xs font-medium text-textSecondary-light dark:text-textSecondary-dark uppercase tracking-wider cursor-pointer hover:text-accent-light dark:hover:text-accent-dark sticky top-0 bg-gray-50 dark:bg-surface-dark z-10"
                   onClick={() => handleSort('records')}
                 >
-                  Records {getSortIcon('records')}
+                  Files {getSortIcon('records')}
                 </th>
-                <th 
+                <th
                   className="px-6 py-3 text-left text-xs font-medium text-textSecondary-light dark:text-textSecondary-dark uppercase tracking-wider cursor-pointer hover:text-accent-light dark:hover:text-accent-dark sticky top-0 bg-gray-50 dark:bg-surface-dark z-10"
                   onClick={() => handleSort('lastUpdated')}
                 >
@@ -238,7 +237,7 @@ export default function DatasetTable({ datasets, sortConfig, onSort }) {
           </table>
         </div>
       </div>
-      
+
       {/* Pagination */}
       <div className="mt-4 flex justify-between items-center bg-white dark:bg-card-dark rounded-lg border border-border-light dark:border-border-dark p-4">
         <div className="text-sm text-textSecondary-light dark:text-textSecondary-dark">
