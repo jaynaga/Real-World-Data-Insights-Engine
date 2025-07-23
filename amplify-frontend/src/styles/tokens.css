@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .card {
+    @apply bg-card-light dark:bg-card-dark text-textPrimary-light dark:text-textPrimary-dark rounded-xl shadow p-6;
+  }
+
+  .text-subtle {
+    @apply text-textSecondary-light dark:text-textSecondary-dark;
+  }
+
+  .border-default {
+    @apply border border-border-light dark:border-border-dark;
+  }
+
+  .btn-accent {
+    @apply bg-accent-light dark:bg-accent-dark text-white px-4 py-2 rounded-lg hover:opacity-90;
+  }
+
+  .page-bg {
+    @apply bg-surface-light dark:bg-surface-dark;
+  }
+
+    .quick-tile {
+    @apply flex flex-col items-center justify-center p-4 rounded-xl bg-white dark:bg-surface-dark border border-default hover:bg-gray-50 dark:hover:bg-gray-800;
+    }
+
+    .quick-icon {
+    @apply text-accent-light dark:text-accent-dark text-2xl;
+    }
+
+    .quick-label {
+    @apply text-center;
+}
+}
