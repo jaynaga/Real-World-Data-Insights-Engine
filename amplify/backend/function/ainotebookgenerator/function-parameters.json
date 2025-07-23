@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "storage": {
+      "rwdeDatasetStorage": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ]
+    }
+  },
+  "lambdaLayers": [],
+  "environmentVariableList": [
+    {
+      "cloudFormationParameterName": "storageRwdedatasetstorageBucketname",
+      "environmentVariableName": "STORAGE_RWDEDATASETSTORAGE_BUCKETNAME"
+    }
+  ]
+}
