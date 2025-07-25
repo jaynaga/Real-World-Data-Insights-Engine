@@ -30,9 +30,6 @@
       "api": {
         "rwdeapi": {}
       },
-      "hosting": {
-        "S3AndCloudFront": {}
-      },
       "storage": {
         "rwdeDatasetStorage": {}
       }

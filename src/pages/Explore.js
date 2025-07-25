@@ -1,17 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { listDatasets } from '../utils/storageUtils';
+import AIDatasetAssistant from '../components/AIDatasetAssistant';
+import { FaRobot } from 'react-icons/fa';
 
 export default function Explore() {
   const [datasets, setDatasets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // AI Dataset Assistant state
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
+  const handleOpenAIAssistant = () => setShowAIAssistant(true);
+  const handleCloseAIAssistant = () => setShowAIAssistant(false);
 
-  useEffect(() => {
-    loadDatasets();
-  }, []);
-
-  const loadDatasets = async () => {
+  const loadDatasets = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -53,7 +56,11 @@ export default function Explore() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadDatasets();
+  }, [loadDatasets]);
 
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
@@ -67,9 +74,17 @@ export default function Explore() {
     return (
       <div className="min-h-screen bg-surface-light dark:bg-surface-dark">
         <div className="max-w-7xl mx-auto px-6 py-8">
-          <h1 className="text-2xl font-semibold text-textPrimary-light dark:text-textPrimary-dark mb-6">
-            Explore Datasets
-          </h1>
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-semibold text-textPrimary-light dark:text-textPrimary-dark">
+              Explore Datasets
+            </h1>
+            <button
+              onClick={handleOpenAIAssistant}
+              className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 text-sm rounded flex items-center gap-2 hover:from-purple-700 hover:to-blue-700 transition-all"
+            >
+              <FaRobot /> AI Dataset Assistant
+            </button>
+          </div>
           <div className="flex items-center justify-center py-12">
             <div className="text-textSecondary-light dark:text-textSecondary-dark">
               Loading datasets...
@@ -84,9 +99,17 @@ export default function Explore() {
     return (
       <div className="min-h-screen bg-surface-light dark:bg-surface-dark">
         <div className="max-w-7xl mx-auto px-6 py-8">
-          <h1 className="text-2xl font-semibold text-textPrimary-light dark:text-textPrimary-dark mb-6">
-            Explore Datasets
-          </h1>
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-semibold text-textPrimary-light dark:text-textPrimary-dark">
+              Explore Datasets
+            </h1>
+            <button
+              onClick={handleOpenAIAssistant}
+              className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 text-sm rounded flex items-center gap-2 hover:from-purple-700 hover:to-blue-700 transition-all"
+            >
+              <FaRobot /> AI Dataset Assistant
+            </button>
+          </div>
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
             <p className="text-red-700 dark:text-red-300">
               Failed to load datasets: {error}
@@ -105,9 +128,17 @@ export default function Explore() {
   return (
     <div className="min-h-screen bg-surface-light dark:bg-surface-dark">
       <div className="max-w-7xl mx-auto px-6 py-8">
-        <h1 className="text-2xl font-semibold text-textPrimary-light dark:text-textPrimary-dark mb-6">
-          Explore Datasets
-        </h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-semibold text-textPrimary-light dark:text-textPrimary-dark">
+            Explore Datasets
+          </h1>
+          <button
+            onClick={handleOpenAIAssistant}
+            className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 text-sm rounded flex items-center gap-2 hover:from-purple-700 hover:to-blue-700 transition-all"
+          >
+            <FaRobot /> AI Dataset Assistant
+          </button>
+        </div>
 
         {datasets.length === 0 ? (
           <div className="text-center py-12">
@@ -155,6 +186,17 @@ export default function Explore() {
               </Link>
             ))}
           </div>
+        )}
+        
+        {/* AI Dataset Assistant Modal */}
+        {showAIAssistant && (
+          <AIDatasetAssistant
+            isOpen={showAIAssistant}
+            onClose={handleCloseAIAssistant}
+            availableDatasets={datasets}
+            onDatasetSelect={() => {}} // No dataset selection functionality needed on explore page
+            currentProjectDatasets={[]}
+          />
         )}
       </div>
     </div>

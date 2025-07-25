@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { FiUploadCloud, FiFile, FiX, FiPlus, FiDownload, FiInfo, FiFileText } from "react-icons/fi";
 import { uploadFile, listUserUploads, getFileUrl } from '../utils/storageUtils';
+import UploadMethodSelector from '../components/UploadMethodSelector';
 import '../styles/tokens.css';
 
 export default function Upload() {
+  const [showMethodSelector, setShowMethodSelector] = useState(true);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -412,12 +414,49 @@ export default function Upload() {
     }
   };
 
+  const handleInternalUpload = () => {
+    setShowMethodSelector(false);
+  };
+
+  const handleDatasetRegistered = async () => {
+    // Refresh the recent uploads list
+    await loadUploads();
+    setShowMethodSelector(true);
+  };
+
+  // Show method selector first
+  if (showMethodSelector) {
+    return (
+      <div className="min-h-screen bg-surface-light dark:bg-surface-dark p-6">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-3xl font-bold mb-8 text-textPrimary-light dark:text-textPrimary-dark">
+            Add Dataset
+          </h1>
+          <UploadMethodSelector
+            isOpen={true}
+            onClose={() => {}} // No close action needed since this is the main page
+            onInternalUpload={handleInternalUpload}
+            onDatasetRegistered={handleDatasetRegistered}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-surface-light dark:bg-surface-dark p-6">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-textPrimary-light dark:text-textPrimary-dark">
-          Upload Dataset
-        </h1>
+        <div className="flex items-center gap-4 mb-8">
+          <button
+            onClick={() => setShowMethodSelector(true)}
+            className="px-4 py-2 text-accent-light dark:text-accent-dark hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg border border-border-light dark:border-border-dark"
+          >
+            ← Back to Upload Options
+          </button>
+          <h1 className="text-3xl font-bold text-textPrimary-light dark:text-textPrimary-dark">
+            Upload Dataset - Internal Storage
+          </h1>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Dataset Files Upload Area */}

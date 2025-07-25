@@ -11,7 +11,7 @@ import SingleProject from './sections/Projects/SingleProject';
 import ProjectVisualization from './sections/Projects/ProjectVisualization';
 import ProjectNotebookIDE from './pages/ProjectNotebookIDE';
 import Settings from './pages/Settings';
-import TestNavigationPage from './pages/TestNavigationPage';
+// ...existing code...
 
 function Router() {
   console.log('Router loaded: routes are being rendered');
@@ -38,8 +38,7 @@ function Router() {
       {console.log('Rendering route: /projects/:id/visualization')}
       <Route path="/projects/:id/visualization" element={<ProjectVisualization />} />
       // ...existing code...
-      {console.log('Rendering route: /test-navigation')}
-      <Route path="/test-navigation" element={<TestNavigationPage />} />
+      // ...existing code...
       {console.log('Rendering route: /settings')}
       <Route path="/settings" element={<Settings />} />
       {console.log('Rendering route: * (NotFound)')}

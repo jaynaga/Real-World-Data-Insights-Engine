@@ -12,12 +12,15 @@ import {
   FiZap,
   FiDatabase,
   FiFileText,
-  FiEye
+  FiEye,
+  FiPlus
 } from 'react-icons/fi';
 import { HiOutlineDocumentText, HiOutlineGlobe } from 'react-icons/hi';
 import { loadCsvDataset } from '../../utils/storageUtils';
 import DataViewer from '../../components/DataViewer';
 import AINotebookGenerator from '../../components/AINotebookGenerator';
+import DatasetSharingModal from '../../components/DatasetSharingModal';
+import { listProjects, createProject, addDatasetToProject } from '../../services/projectService';
 import '../../styles/tokens.css';
 
 export default function SingleDatasetOverview({ datasets = [], loading = false }) {
@@ -37,6 +40,16 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
 
   // AI Notebook Generator state
   const [showNotebookGenerator, setShowNotebookGenerator] = useState(false);
+
+  // Project selection state
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [projectLoading, setProjectLoading] = useState(false);
+
+  // Dataset sharing state
+  const [showSharingModal, setShowSharingModal] = useState(false);
 
   // ✅ Auto-select first file when dataset loads
   useEffect(() => {
@@ -73,6 +86,69 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
     }
     const fileUrl = `https://${process.env.REACT_APP_S3_BUCKET}.s3.amazonaws.com/${selectedFile.key}`;
     window.open(fileUrl, '_blank');
+  };
+
+  // Project selection handlers
+  const handleAddToProject = async () => {
+    try {
+      setProjectLoading(true);
+      const projectsData = await listProjects();
+      console.log('Projects loaded for dropdown:', projectsData);
+      if (projectsData.length > 0) {
+        console.log('First project structure:', projectsData[0]);
+      }
+      setProjects(projectsData);
+      setShowProjectModal(true);
+    } catch (error) {
+      console.error('Error loading projects:', error);
+      alert('Failed to load projects. Please try again.');
+    } finally {
+      setProjectLoading(false);
+    }
+  };
+
+  const handleProjectSelection = async () => {
+    if (!selectedProjectId && !newProjectName.trim()) {
+      alert('Please select an existing project or enter a new project name.');
+      return;
+    }
+
+    try {
+      setProjectLoading(true);
+      let projectId = selectedProjectId;
+
+      // Create new project if needed
+      if (!selectedProjectId && newProjectName.trim()) {
+        const projectData = {
+          id: `proj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          title: newProjectName.trim(),
+          description: `Project created for dataset: ${dataset.name}`,
+          selectedDatasets: [],
+          status: 'active'
+        };
+        const newProject = await createProject(projectData);
+        projectId = newProject.id;
+      }
+
+      // Add dataset to project
+      await addDatasetToProject(projectId, dataset.id);
+      
+      setShowProjectModal(false);
+      setSelectedProjectId('');
+      setNewProjectName('');
+      alert('Dataset added to project successfully!');
+    } catch (error) {
+      console.error('Error adding dataset to project:', error);
+      alert('Failed to add dataset to project. Please try again.');
+    } finally {
+      setProjectLoading(false);
+    }
+  };
+
+  const closeProjectModal = () => {
+    setShowProjectModal(false);
+    setSelectedProjectId('');
+    setNewProjectName('');
   };
 
   const formatFileSize = (bytes) => {
@@ -147,12 +223,22 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
             </div>
             <div className="flex gap-3 flex-shrink-0">
               <button
+                onClick={handleAddToProject}
+                disabled={projectLoading}
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm"
+              >
+                <FiPlus /> {projectLoading ? 'Loading...' : 'Add to Projects'}
+              </button>
+              <button
                 onClick={handleDownloadDataset}
                 className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-accent-light dark:bg-accent-dark text-white rounded-lg hover:opacity-90 text-sm"
               >
                 <FiDownload /> {selectedFile ? `Download ${selectedFile.name}` : 'Download Dataset'}
               </button>
-              <button className="flex items-center gap-2 px-3 sm:px-4 py-2 border border-border-light dark:border-border-dark rounded-lg text-textPrimary-light dark:text-textPrimary-dark hover:bg-gray-50 dark:hover:bg-card-hover-dark text-sm">
+              <button
+                onClick={() => setShowSharingModal(true)}
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 border border-border-light dark:border-border-dark rounded-lg text-textPrimary-light dark:text-textPrimary-dark hover:bg-gray-50 dark:hover:bg-card-hover-dark text-sm"
+              >
                 <FiShare2 /> Share
               </button>
               <button
@@ -408,11 +494,6 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
                     <span className="ml-1">{dataset.metadataFileCount}</span>
                   </div>
                 )}
-                <div className="flex items-center text-textPrimary-light dark:text-textPrimary-dark text-sm sm:text-base">
-                  <FiMap className="mr-2 text-textSecondary-light dark:text-textSecondary-dark" />
-                  <span className="font-medium">Path:</span>
-                  <span className="ml-1 text-xs font-mono bg-gray-100 dark:bg-surface-dark px-1 rounded">{dataset?.key}</span>
-                </div>
               </div>
             </div>
 
@@ -503,6 +584,83 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
           projectId={dataset?.id || dataset?.key}
         />
       )}
+
+      {/* Project Selection Modal */}
+      {showProjectModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-card-dark rounded-lg shadow-xl w-full max-w-md max-h-96 overflow-hidden">
+            <div className="p-6 border-b border-border-light dark:border-border-dark">
+              <h3 className="text-lg font-semibold text-textPrimary-light dark:text-textPrimary-dark">
+                Add Dataset to Project
+              </h3>
+              <p className="text-sm text-textSecondary-light dark:text-textSecondary-dark mt-1">
+                Select an existing project or create a new one
+              </p>
+            </div>
+            
+            <div className="p-6 space-y-4 max-h-64 overflow-y-auto">
+              {/* Existing Projects */}
+              {projects.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-textPrimary-light dark:text-textPrimary-dark mb-2">
+                    Select Existing Project
+                  </label>
+                  <select
+                    value={selectedProjectId}
+                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                    className="w-full p-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-card-dark text-textPrimary-light dark:text-textPrimary-dark"
+                  >
+                    <option value="">Choose a project...</option>
+                    {projects.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.title || project.name || 'Untitled Project'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              
+              {/* Create New Project */}
+              <div>
+                <label className="block text-sm font-medium text-textPrimary-light dark:text-textPrimary-dark mb-2">
+                  Or Create New Project
+                </label>
+                <input
+                  type="text"
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  placeholder="Enter project name..."
+                  className="w-full p-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-card-dark text-textPrimary-light dark:text-textPrimary-dark"
+                />
+              </div>
+            </div>
+            
+            <div className="p-6 border-t border-border-light dark:border-border-dark flex gap-3 justify-end">
+              <button
+                onClick={closeProjectModal}
+                disabled={projectLoading}
+                className="px-4 py-2 text-textSecondary-light dark:text-textSecondary-dark hover:text-textPrimary-light dark:hover:text-textPrimary-dark disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleProjectSelection}
+                disabled={projectLoading || (!selectedProjectId && !newProjectName.trim())}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+              >
+                {projectLoading ? 'Adding...' : 'Add to Project'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dataset Sharing Modal */}
+      <DatasetSharingModal
+        isOpen={showSharingModal}
+        onClose={() => setShowSharingModal(false)}
+        dataset={dataset}
+      />
     </div>
   );
 }

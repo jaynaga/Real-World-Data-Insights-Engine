@@ -1,5 +1,95 @@
 import { Storage } from 'aws-amplify';
 import Papa from 'papaparse';
+import externalDatasetIntegrationService from '../services/externalDatasetIntegrationService';
+
+// Fetch dataset file content from S3
+export const getDatasetFile = async (datasetId) => {
+  console.log('🔍 Attempting to fetch dataset file:', datasetId);
+  
+  try {
+    // The datasetId is likely a folder path like "user-uploads/raw/test-1753066076407"
+    // We need to list files in that folder and get the first CSV file
+    
+    // First, try to list files in the dataset folder
+    const possibleFolderPaths = [
+      datasetId, // Direct path
+      `user-uploads/raw/${datasetId}`, // Prefixed path
+      `raw/${datasetId}` // Alternative prefix
+    ];
+
+    for (const folderPath of possibleFolderPaths) {
+      try {
+        console.log('🔍 Listing files in folder:', folderPath);
+        
+        // List files in the dataset folder
+        const files = await Storage.list(folderPath + '/', { 
+          level: 'protected',
+          pageSize: 100
+        });
+        
+        console.log('📁 Files found in folder:', files.map(f => f.key));
+        
+        // Filter for data files (exclude metadata folder and look for CSV/data files)
+        const dataFiles = files.filter(file => 
+          !file.key.includes('/metadata/') && // Exclude metadata files
+          !file.key.endsWith('/') && // Exclude folder entries
+          (file.key.endsWith('.csv') || file.key.endsWith('.json') || file.key.endsWith('.txt'))
+        );
+        
+        if (dataFiles.length > 0) {
+          // Get the first data file
+          const firstDataFile = dataFiles[0];
+          console.log('📄 Fetching first data file:', firstDataFile.key);
+          
+          const result = await Storage.get(firstDataFile.key, { 
+            level: 'protected',
+            download: true 
+          });
+          console.log('✅ Successfully fetched data file');
+          return result;
+        } else {
+          console.log('❌ No data files found in folder:', folderPath);
+        }
+      } catch (error) {
+        console.log('❌ Failed to list files in folder:', folderPath, error.message);
+        continue;
+      }
+    }
+
+    // If folder approach fails, try direct file access with different extensions/paths
+    const alternativePaths = [
+      datasetId, // Direct key as provided
+      `${datasetId}.csv`, // Add .csv extension
+      `user-uploads/raw/${datasetId}`, // user-uploads/raw/prefix
+      `user-uploads/raw/${datasetId}.csv`, // user-uploads/raw/prefix with extension
+      `raw/${datasetId}`, // raw/prefix
+      `datasets/${datasetId}` // datasets/prefix
+    ];
+
+    // Try each alternative path
+    for (const path of alternativePaths) {
+      try {
+        console.log('🔍 Trying direct file path:', path);
+        const result = await Storage.get(path, { 
+          level: 'protected',
+          download: true 
+        });
+        console.log('✅ Successfully fetched file with path:', path);
+        return result;
+      } catch (error) {
+        console.log('❌ Failed with path:', path);
+        continue;
+      }
+    }
+
+    // If all attempts fail, throw a user-friendly error
+    console.log('❌ All attempts to fetch dataset file failed');
+    throw new Error(`Dataset file not found: ${datasetId}. File may have been deleted or moved.`);
+  } catch (error) {
+    console.error('Error in getDatasetFile:', error);
+    throw error;
+  }
+};
 
 // Helper function to find common prefix in file names
 const findCommonPrefix = (filenames) => {
@@ -295,6 +385,17 @@ export const listDatasets = async () => {
       // Continue even if user datasets fail
     }
 
+    // Third, load external datasets and integrate them
+    console.log('Loading external datasets...');
+    try {
+      const externalDatasets = await externalDatasetIntegrationService.loadExternalDatasets();
+      console.log(`Found ${externalDatasets.length} external datasets`);
+      allDatasets.push(...externalDatasets);
+    } catch (error) {
+      console.error('Error loading external datasets:', error);
+      // Continue even if external datasets fail
+    }
+
     console.log(`Total datasets found: ${allDatasets.length}`);
     return allDatasets;
 
@@ -391,7 +492,7 @@ export const listUserDatasets = async () => {
             const metadataFiles = allFiles.filter(f => f.isMetadata);
 
             return {
-              id: folderPath,
+              id: folderName, // Use just the folder name as ID instead of full path
               name: displayName,
               key: folderPath,
               size: folderData.totalSize,
@@ -680,14 +781,36 @@ export const loadCsvDataset = async (key, accessLevel = 'protected') => {
   try {
     console.log(`Loading CSV dataset: ${key} with access level: ${accessLevel}`);
 
-    // Download the file from S3
-    const result = await Storage.get(key, {
-      level: accessLevel,
-      download: true
-    });
+    let csvContent;
 
-    // Convert to text
-    const csvContent = await result.Body.text();
+    // Check if this is an external dataset
+    if (key.startsWith('external://')) {
+      // Extract connection and file info from external key format: external://connectionId/fileId
+      const keyParts = key.replace('external://', '').split('/');
+      const connectionId = keyParts[0];
+      const fileId = keyParts.slice(1).join('/');
+      
+      console.log(`Loading external dataset - Connection: ${connectionId}, File: ${fileId}`);
+      
+      // Find the dataset document to get proper metadata
+      const externalDatasets = await externalDatasetIntegrationService.loadExternalDatasets();
+      const dataset = externalDatasets.find(d => d.external?.connectionId === connectionId && d.external?.externalFileId === fileId);
+      
+      if (!dataset) {
+        throw new Error('External dataset not found or connection unavailable');
+      }
+      
+      // Get content from external storage
+      const externalContent = await externalDatasetIntegrationService.getExternalDatasetContent(dataset);
+      csvContent = externalContent.content;
+    } else {
+      // Standard internal dataset - download from S3
+      const result = await Storage.get(key, {
+        level: accessLevel,
+        download: true
+      });
+      csvContent = await result.Body.text();
+    }
 
     // Parse with PapaParse
     return new Promise((resolve, reject) => {
@@ -707,7 +830,8 @@ export const loadCsvDataset = async (key, accessLevel = 'protected') => {
             meta: results.meta,
             rowCount: results.data.length,
             columns: results.meta.fields,
-            fileName: key.split('/').pop()
+            fileName: key.split('/').pop(),
+            isExternal: key.startsWith('external://')
           });
         },
         error: reject

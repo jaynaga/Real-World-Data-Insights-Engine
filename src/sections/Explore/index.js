@@ -2,10 +2,12 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { FiFilter, FiSearch } from 'react-icons/fi';
 import { HiOutlineSortAscending } from 'react-icons/hi';
+import { FaRobot } from 'react-icons/fa';
 
 import DatasetTable from './DatasetTable';
 import ExploreSidebar from './ExploreSidebar';
 import SingleDatasetOverview from './SingleDatasetOverview';
+import AIDatasetAssistant from '../../components/AIDatasetAssistant';
 import { listDatasets } from '../../utils/storageUtils';
 import '../../styles/tokens.css';
 
@@ -24,10 +26,10 @@ export default function DatasetExplorerPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Load datasets on component mount
-  useEffect(() => {
-    loadDatasets();
-  }, []);
+  // AI Dataset Assistant state
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
+  const handleOpenAIAssistant = () => setShowAIAssistant(true);
+  const handleCloseAIAssistant = () => setShowAIAssistant(false);
 
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
@@ -37,7 +39,7 @@ export default function DatasetExplorerPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const loadDatasets = async () => {
+  const loadDatasets = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -87,7 +89,12 @@ export default function DatasetExplorerPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Load datasets on component mount
+  useEffect(() => {
+    loadDatasets();
+  }, [loadDatasets]);
 
   // Handler for sorting datasets
   const handleSort = useCallback((field) => {
@@ -188,9 +195,17 @@ export default function DatasetExplorerPage() {
         <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           {/* Header */}
           <div className="mb-6 sm:mb-8">
-            <h1 className="text-xl sm:text-2xl font-semibold text-textPrimary-light dark:text-textPrimary-dark mb-2">
-              Dataset Explorer
-            </h1>
+            <div className="flex items-center justify-between mb-2">
+              <h1 className="text-xl sm:text-2xl font-semibold text-textPrimary-light dark:text-textPrimary-dark">
+                Dataset Explorer
+              </h1>
+              <button
+                onClick={handleOpenAIAssistant}
+                className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 text-sm rounded flex items-center gap-2 hover:from-purple-700 hover:to-blue-700 transition-all"
+              >
+                <FaRobot /> AI Dataset Assistant
+              </button>
+            </div>
             <p className="text-textSecondary-light dark:text-textSecondary-dark text-sm sm:text-base">
               Browse and explore available datasets
             </p>
@@ -252,6 +267,17 @@ export default function DatasetExplorerPage() {
         setFilters={setFilters}
         datasets={datasets}
       />
+
+      {/* AI Dataset Assistant Modal */}
+      {showAIAssistant && (
+        <AIDatasetAssistant
+          isOpen={showAIAssistant}
+          onClose={handleCloseAIAssistant}
+          availableDatasets={datasets}
+          onDatasetSelect={() => {}} // No dataset selection functionality needed on explore page
+          currentProjectDatasets={[]}
+        />
+      )}
     </>
   );
 

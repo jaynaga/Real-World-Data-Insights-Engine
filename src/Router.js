@@ -8,6 +8,7 @@ import Projects from './pages/Projects';
 import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 import Upload from './pages/Upload';
+import SharedDatasetPage from './pages/SharedDatasetPage';
 
 export default function Router() {
   return (
@@ -20,6 +21,7 @@ export default function Router() {
         <Route path="/projects" element={<Projects />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/upload" element={<Upload />} />
+        <Route path="/shared/:shareId" element={<SharedDatasetPage />} />
         <Route path="/404" element={<NotFound />} />
         <Route path="*" element={<Navigate to="/404" replace />} />
       </Routes>

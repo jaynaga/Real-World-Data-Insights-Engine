@@ -247,13 +247,16 @@ export default function ProjectsIndexPage() {
                 <p className="text-sm mb-2 text-textSecondary-light dark:text-textSecondary-dark line-clamp-2">
                   {project.description}
                 </p>
-                <span className={`inline-block text-xs px-2 py-1 rounded-full mb-3 font-medium ${getStatusColor(project.status)}`}>
-                  {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
+                <span className={`inline-block text-xs px-2 py-1 rounded-full mb-3 font-medium ${getStatusColor(project.status || 'active')}`}>
+                  {(project.status || 'active').charAt(0).toUpperCase() + (project.status || 'active').slice(1)}
                 </span>
                 <div className="flex justify-between items-center">
                   <div className="text-xs text-gray-500">
                     <p>{project.selectedDatasets?.length || 0} datasets</p>
                     <p>Updated {formatLastModified(project.updatedAt)}</p>
+                    {project.dashboardConfig && (
+                      <p className="text-purple-600 font-medium">📊 Dashboard saved</p>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <button
@@ -262,6 +265,16 @@ export default function ProjectsIndexPage() {
                     >
                       Open Project
                     </button>
+                    {project.dashboardConfig && (
+                      <button
+                        className="text-sm bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600"
+                        onClick={() => navigate(`/projects/${project.id}/dashboard`)}
+                        title="Open saved dashboard"
+                      >
+                        📊 Dashboard
+                      </button>
+                    )}
+                    {/* Removed Visualizations button. Visualization now accessed from SingleProject page. */}
                     <button className="text-gray-400 hover:text-gray-600">
                       <MdOutlineShare size={16} />
                     </button>

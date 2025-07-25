@@ -1,8 +1,11 @@
 import React from 'react';
 
-export default function QuickAction({ icon, label }) {
+export default function QuickAction({ icon, label, onClick }) {
   return (
-    <div className="quick-tile group cursor-pointer hover:shadow-md transition">
+    <div 
+      className="quick-tile group cursor-pointer hover:shadow-md transition"
+      onClick={onClick}
+    >
       <div className="quick-icon mb-2 text-xl">
         {icon}
       </div>
