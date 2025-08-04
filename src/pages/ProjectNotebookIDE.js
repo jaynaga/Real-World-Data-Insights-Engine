@@ -57,19 +57,38 @@ export default function ProjectNotebookIDE() {
     setHasDownloaded(true);
   };
 
-  const openJupyterLite = () => {
+  const openJupyterNotebook = () => {
     // Download the notebook first
     downloadNotebook();
     
-    // Open JupyterLite in a new tab
+    const notebookName = notebookS3Key 
+      ? notebookS3Key.split('/').pop() 
+      : 'notebook.ipynb';
+    
+    // Try to open Jupyter Notebook (this will only work if Jupyter is installed locally)
+    // We'll provide instructions for manual opening
     setTimeout(() => {
-      window.open('/jupyterlite/index.html', '_blank', 'noopener,noreferrer');
-    }, 500); // Small delay to ensure download starts
+      alert(`Notebook downloaded! To open in Jupyter Notebook:
+      
+1. Open Terminal/Command Prompt
+2. Navigate to your Downloads folder
+3. Run: jupyter notebook
+4. Open the downloaded notebook file: ${notebookName}
+
+Alternative: Double-click the downloaded .ipynb file if you have Jupyter installed.`);
+    }, 500);
   };
 
   return (
     <div style={{ padding: "2rem", maxWidth: "800px", margin: "0 auto" }}>
-      <h2>Open Notebook in JupyterLite</h2>
+      <div style={{ textAlign: "center", marginBottom: "2rem", padding: "1.5rem", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", borderRadius: "12px", color: "white", boxShadow: "0 4px 15px rgba(0,0,0,0.1)" }}>
+        <h1 style={{ margin: "0", fontSize: "2.5rem", fontWeight: "bold", textShadow: "0 2px 4px rgba(0,0,0,0.3)" }}>
+          📓 Open Notebook in Jupyter
+        </h1>
+        <p style={{ margin: "0.5rem 0 0 0", fontSize: "1.1rem", opacity: "0.9" }}>
+          Download and run your AI-generated notebook locally
+        </p>
+      </div>
       
       {loading && (
         <div style={{ padding: "2rem", textAlign: "center" }}>
@@ -101,17 +120,17 @@ export default function ProjectNotebookIDE() {
           <div style={{ marginBottom: "2rem", padding: "1.5rem", backgroundColor: "#e3f2fd", borderRadius: "8px", border: "1px solid #bbdefb" }}>
             <h3 style={{ margin: "0 0 1rem 0", color: "#1565c0" }}>🚀 How to use your notebook:</h3>
             <ol style={{ margin: "0.5rem 0", paddingLeft: "1.5rem", color: "#1976d2" }}>
-              <li style={{ margin: "0.5rem 0" }}>Click the button below to download your notebook file and open JupyterLite</li>
-              <li style={{ margin: "0.5rem 0" }}>In JupyterLite, go to the file browser (folder icon in left sidebar)</li>
-              <li style={{ margin: "0.5rem 0" }}>Click the upload button (arrow up icon) and select your downloaded notebook file</li>
-              <li style={{ margin: "0.5rem 0" }}>Double-click the uploaded notebook to open and run it!</li>
+              <li style={{ margin: "0.5rem 0" }}>Click the button below to download your notebook file</li>
+              <li style={{ margin: "0.5rem 0" }}>Open Terminal/Command Prompt and navigate to your Downloads folder</li>
+              <li style={{ margin: "0.5rem 0" }}>Run: <code>jupyter notebook</code> to start Jupyter</li>
+              <li style={{ margin: "0.5rem 0" }}>Open the downloaded notebook file in Jupyter and run it!</li>
             </ol>
           </div>
 
           {/* Action button */}
           <div style={{ textAlign: "center", marginBottom: "2rem" }}>
             <button
-              onClick={openJupyterLite}
+              onClick={openJupyterNotebook}
               style={{
                 padding: "1rem 2rem",
                 fontSize: "1.1rem",
@@ -126,7 +145,7 @@ export default function ProjectNotebookIDE() {
               onMouseOver={(e) => e.target.style.backgroundColor = "#1976d2"}
               onMouseOut={(e) => e.target.style.backgroundColor = "#2196f3"}
             >
-              📥 Download Notebook & Open JupyterLite
+              � Download Notebook & Get Instructions
             </button>
           </div>
 
@@ -134,15 +153,15 @@ export default function ProjectNotebookIDE() {
           {hasDownloaded && (
             <div style={{ padding: "1rem", backgroundColor: "#e8f5e8", borderRadius: "8px", border: "1px solid #4caf50", textAlign: "center" }}>
               <p style={{ margin: 0, color: "#2e7d32" }}>
-                ✅ Notebook downloaded! Upload it in the JupyterLite tab that just opened.
+                ✅ Notebook downloaded! Follow the instructions in the popup to open in Jupyter.
               </p>
             </div>
           )}
 
           <div style={{ marginTop: "2rem", padding: "1rem", backgroundColor: "#fff3e0", borderRadius: "8px", border: "1px solid #ff9800" }}>
             <p style={{ margin: 0, fontSize: "0.9rem", color: "#ef6c00" }}>
-              <strong>Note:</strong> JupyterLite runs entirely in your browser. Your work won't be automatically saved back to your project. 
-              Download your modified notebook from JupyterLite if you want to keep changes.
+              <strong>Note:</strong> You need Jupyter Notebook installed on your computer. If you don't have it, install with: <code>pip install jupyter</code>
+              <br/>Your work will be saved locally and you can upload modified notebooks back to your project manually.
             </p>
           </div>
         </div>

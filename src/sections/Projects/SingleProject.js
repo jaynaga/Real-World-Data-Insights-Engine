@@ -950,7 +950,7 @@ export default function SingleProject() {
             className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
             onClick={() => navigate(`/projects/${id}/notebook-ide`, { state: { notebookJson: lastGeneratedNotebook } })}
           >
-            <FaDatabase className="mr-2" /> Open in JupyterLite
+            <FaDatabase className="mr-2" /> Open in Jupyter
           </button>
         </div>
       )}
@@ -1292,13 +1292,13 @@ export default function SingleProject() {
                       addNotification({
                         type: 'error',
                         title: 'Failed to Load Notebook',
-                        message: 'Could not load notebook for JupyterLite IDE. Please try again.'
+                        message: 'Could not load notebook for Jupyter IDE. Please try again.'
                       });
                       console.error('Notebook fetch error:', err);
                     }
                   }}
                 >
-                  <FaDatabase className="mr-1" /> Open in JupyterLite
+                  <FaDatabase className="mr-1" /> Open in Jupyter
                 </button>
               </div>
             </div>

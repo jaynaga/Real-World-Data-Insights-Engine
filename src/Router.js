@@ -6,6 +6,7 @@ import SingleDatasetOverview from './sections/Explore/SingleDatasetOverview';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
 import Settings from './pages/Settings';
+import VideoTutorials from './pages/VideoTutorials';
 import NotFound from './pages/NotFound';
 import Upload from './pages/Upload';
 import FUJIIntegrationDemo from './pages/FUJIIntegrationDemo';
@@ -20,6 +21,7 @@ export default function Router() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/projects" element={<Projects />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/video-tutorials" element={<VideoTutorials />} />
         <Route path="/upload" element={<Upload />} />
         <Route path="/fuji-demo" element={<FUJIIntegrationDemo />} />
         <Route path="/404" element={<NotFound />} />

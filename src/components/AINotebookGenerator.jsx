@@ -115,12 +115,43 @@ const AINotebookGenerator = ({
       Array.isArray(notebookObj.cells) &&
       typeof notebookObj.nbformat === 'number'
     ) {
+      // Generate meaningful filename
+      const generateMeaningfulName = () => {
+        const now = new Date();
+        const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        
+        // Extract project name (fallback to "Data_Analysis")
+        const projectName = projectId ? `Project_${projectId}` : "Data_Analysis";
+        
+        // Determine analysis type from research goal
+        let analysisType = "General_Analysis";
+        if (researchGoal) {
+          const goal = researchGoal.toLowerCase();
+          if (goal.includes('explore') || goal.includes('eda') || goal.includes('exploratory')) {
+            analysisType = "Exploratory_Analysis";
+          } else if (goal.includes('statistic') || goal.includes('test') || goal.includes('correlation')) {
+            analysisType = "Statistical_Analysis";
+          } else if (goal.includes('predict') || goal.includes('model') || goal.includes('machine learning')) {
+            analysisType = "Predictive_Modeling";
+          } else if (goal.includes('visual') || goal.includes('chart') || goal.includes('plot')) {
+            analysisType = "Visualization_Dashboard";
+          } else if (goal.includes('clean') || goal.includes('preprocess') || goal.includes('prepare')) {
+            analysisType = "Data_Preprocessing";
+          }
+        }
+        
+        // Clean and format name components
+        const cleanName = (str) => str.replace(/[^a-zA-Z0-9_]/g, '_').replace(/_+/g, '_');
+        
+        return `${cleanName(projectName)}_${cleanName(analysisType)}_${timestamp}.ipynb`;
+      };
+
       const notebookJson = JSON.stringify(notebookObj, null, 2);
       const blob = new Blob([notebookJson], { type: 'application/x-ipynb+json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'notebook.ipynb';
+      link.download = generateMeaningfulName();
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

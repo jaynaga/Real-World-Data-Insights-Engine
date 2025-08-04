@@ -54,7 +54,7 @@ export default function Navbar() {
       <div className="flex items-center space-x-3">
         <img src="/images/logo.jpeg" alt="RWDE Logo" className="h-8 w-auto rounded-full" />
         <span className="text-lg font-semibold text-gray-800 dark:text-white">
-          Real World Insights Engine
+          Real World Data Insights Engine
         </span>
       </div>
 

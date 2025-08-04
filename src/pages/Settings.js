@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext';
 import { useTutorial } from '../context/TutorialContext';
-import { FaSave, FaUser, FaKey, FaEnvelope, FaPhone, FaSun, FaMoon, FaQuestionCircle } from 'react-icons/fa';
+import { FaSave, FaUser, FaKey, FaEnvelope, FaPhone, FaSun, FaMoon, FaQuestionCircle, FaInfoCircle } from 'react-icons/fa';
 import { MdDevices } from 'react-icons/md';
 import { motion } from 'framer-motion';
 import DemoModeToggle from '../components/DemoModeToggle';
@@ -58,6 +58,7 @@ export default function Settings() {
     { id: 'profile', label: 'Profile', icon: <FaUser /> },
     { id: 'appearance', label: 'Appearance', icon: <FaSun /> },
     { id: 'security', label: 'Security', icon: <FaKey /> },
+    { id: 'fair', label: 'About FAIR', icon: <FaInfoCircle /> },
     { id: 'help', label: 'Help', icon: <FaQuestionCircle /> }
   ];
 
@@ -453,8 +454,146 @@ export default function Settings() {
     </div>
   );
 
+  const renderFairSettings = () => (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">What is FAIR?</h3>
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-lg border border-blue-200 dark:border-blue-700">
+          <p className="text-gray-700 dark:text-gray-300 mb-6 text-lg leading-relaxed">
+            FAIR stands for <strong>Findable, Accessible, Interoperable, and Reusable</strong> - 
+            a set of guiding principles to make data management and stewardship more effective. 
+            RWDE helps you implement these principles in your research workflow.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center mb-4">
+            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white text-xl font-bold">
+              F
+            </div>
+            <h4 className="ml-4 text-xl font-semibold text-gray-900 dark:text-white">Findable</h4>
+          </div>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">
+            Data should be easy to find for both humans and computers. This includes proper metadata, 
+            unique identifiers, and searchable repositories.
+          </p>
+          <div className="text-sm text-blue-600 dark:text-blue-400">
+            ✓ Unique dataset identifiers<br/>
+            ✓ Rich metadata descriptions<br/>
+            ✓ Searchable data catalog
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center mb-4">
+            <div className="w-12 h-12 bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center text-white text-xl font-bold">
+              A
+            </div>
+            <h4 className="ml-4 text-xl font-semibold text-gray-900 dark:text-white">Accessible</h4>
+          </div>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">
+            Data should be stored in accessible formats and retrievable through standardized protocols, 
+            with clear access permissions and authentication procedures.
+          </p>
+          <div className="text-sm text-indigo-600 dark:text-indigo-400">
+            ✓ Secure cloud storage<br/>
+            ✓ Standard download protocols<br/>
+            ✓ Access control management
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center mb-4">
+            <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-xl font-bold">
+              I
+            </div>
+            <h4 className="ml-4 text-xl font-semibold text-gray-900 dark:text-white">Interoperable</h4>
+          </div>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">
+            Data should use standard formats and vocabularies to enable integration and exchange 
+            with other datasets, applications, and workflows.
+          </p>
+          <div className="text-sm text-purple-600 dark:text-purple-400">
+            ✓ Standard file formats (CSV, JSON)<br/>
+            ✓ Consistent data schemas<br/>
+            ✓ API integration support
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center mb-4">
+            <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-pink-600 rounded-lg flex items-center justify-center text-white text-xl font-bold">
+              R
+            </div>
+            <h4 className="ml-4 text-xl font-semibold text-gray-900 dark:text-white">Reusable</h4>
+          </div>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">
+            Data should be well-documented with clear licensing and provenance information, 
+            making it ready for future research and applications.
+          </p>
+          <div className="text-sm text-pink-600 dark:text-pink-400">
+            ✓ Comprehensive documentation<br/>
+            ✓ Clear usage licenses<br/>
+            ✓ Version control tracking
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">How RWDE Supports FAIR Principles</h3>
+        <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
+          <div className="space-y-4">
+            <div className="flex items-start space-x-3">
+              <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+              <p className="text-gray-700 dark:text-gray-300">
+                <strong>Automated Metadata:</strong> RWDE automatically generates rich metadata for your datasets, 
+                including statistical summaries and data quality metrics.
+              </p>
+            </div>
+            <div className="flex items-start space-x-3">
+              <div className="w-2 h-2 bg-indigo-500 rounded-full mt-2 flex-shrink-0"></div>
+              <p className="text-gray-700 dark:text-gray-300">
+                <strong>Secure Storage:</strong> All datasets are stored in secure, scalable cloud infrastructure 
+                with proper access controls and backup systems.
+              </p>
+            </div>
+            <div className="flex items-start space-x-3">
+              <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+              <p className="text-gray-700 dark:text-gray-300">
+                <strong>Standard Formats:</strong> Support for common data formats and automatic format validation 
+                ensures your data remains interoperable.
+              </p>
+            </div>
+            <div className="flex items-start space-x-3">
+              <div className="w-2 h-2 bg-pink-500 rounded-full mt-2 flex-shrink-0"></div>
+              <p className="text-gray-700 dark:text-gray-300">
+                <strong>Documentation Tools:</strong> Built-in documentation features help you maintain 
+                comprehensive records of your data processing and analysis workflows.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderHelpSettings = () => (
     <div className="space-y-6">
+      {/* Coming Soon Banner */}
+      <div className="bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-4">
+        <div className="flex items-center gap-2">
+          <span className="text-orange-600 text-lg">🚧</span>
+          <div>
+            <h3 className="text-orange-800 dark:text-orange-200 font-medium">Coming Soon - Enhanced Help Features</h3>
+            <p className="text-orange-600 dark:text-orange-300 text-sm">
+              We're working on expanding our help system with live chat support, interactive guides, and personalized assistance features.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div>
         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Getting Started</h3>
         <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
@@ -501,12 +640,12 @@ export default function Settings() {
             <p className="text-gray-600 dark:text-gray-300 text-sm mb-3">
               Step-by-step video guides for common tasks
             </p>
-            <a 
-              href="#" 
-              className="text-blue-500 hover:text-blue-600 text-sm font-medium"
+            <button 
+              onClick={() => navigate('/video-tutorials')}
+              className="text-blue-500 hover:text-blue-600 text-sm font-medium hover:underline bg-transparent border-none cursor-pointer"
             >
               Watch Videos →
-            </a>
+            </button>
           </div>
           
           <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
@@ -635,6 +774,7 @@ export default function Settings() {
               {activeTab === 'profile' && renderProfileSettings()}
               {activeTab === 'appearance' && renderAppearanceSettings()}
               {activeTab === 'security' && renderSecuritySettings()}
+              {activeTab === 'fair' && renderFairSettings()}
               {activeTab === 'help' && renderHelpSettings()}
             </div>
           </div>
