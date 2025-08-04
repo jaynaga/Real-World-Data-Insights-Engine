@@ -548,10 +548,15 @@ export default function Upload() {
             >
               <div className="flex items-center gap-3 mb-2">
                 <FiCloud className={`${uploadMethod === 'cloud' ? 'text-blue-600' : 'text-gray-400'}`} size={24} />
-                <div>
-                  <h3 className="font-medium text-textPrimary-light dark:text-textPrimary-dark">
-                    Import from Cloud Storage
-                  </h3>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-medium text-textPrimary-light dark:text-textPrimary-dark">
+                      Share from Cloud Storage
+                    </h3>
+                    <span className="bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                      Coming Soon
+                    </span>
+                  </div>
                   <p className="text-sm text-textSecondary-light dark:text-textSecondary-dark">
                     Connect to Google Drive, Dropbox, S3, Azure, etc.
                   </p>

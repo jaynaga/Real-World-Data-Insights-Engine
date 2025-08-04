@@ -272,8 +272,11 @@ const CloudStorageSelector = ({ onFilesSelected, onError }) => {
       <div className="flex items-center gap-2 mb-4">
         <FiCloud className="text-accent-light dark:text-accent-dark" />
         <h2 className="text-lg font-semibold text-textPrimary-light dark:text-textPrimary-dark">
-          Import from Cloud Storage
+          Share from Cloud Storage
         </h2>
+        <span className="bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+          Coming Soon
+        </span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
