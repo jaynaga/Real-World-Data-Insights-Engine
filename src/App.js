@@ -15,6 +15,7 @@ import CreateProject from './pages/CreateProject';
 import NotFound from './pages/NotFound';
 import Login from './pages/Login';
 import Settings from './pages/Settings';
+import VideoTutorials from './pages/VideoTutorials';
 import FUJIIntegrationDemo from './pages/FUJIIntegrationDemo';
 import OAuthCallback from './pages/OAuthCallback';
 import SingleProject from './sections/Projects/SingleProject';
@@ -66,6 +67,7 @@ function AppContent() {
         <Route path="/projects/:id/dashboard" element={<ProtectedRoute><ProjectVisualizationDashboard /></ProtectedRoute>} />
         <Route path="/projects/:id/smart-viz" element={<ProtectedRoute><ProjectVisualizationSmart /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route path="/video-tutorials" element={<ProtectedRoute><VideoTutorials /></ProtectedRoute>} />
         <Route path="/fuji-demo" element={<ProtectedRoute><FUJIIntegrationDemo /></ProtectedRoute>} />
         <Route path="/404" element={<NotFound />} />
         <Route path="*" element={<Navigate to="/404" replace />} />

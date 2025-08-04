@@ -1906,6 +1906,7 @@ export default function ProjectVisualizationDashboard() {
     for (const dataset of datasets) {
       try {
         console.log(`📊 Processing dataset: ${dataset.name} (ID: ${dataset.id})`);
+        console.log(`📂 Dataset full object:`, JSON.stringify(dataset, null, 2));
         console.log(`📂 Dataset key/path: ${dataset.key || dataset.path || dataset.id}`);
         
         // Use the key field (folder path) instead of ID to find the dataset files
@@ -1913,16 +1914,28 @@ export default function ProjectVisualizationDashboard() {
         
         // Get all files for this dataset
         const files = await listDatasetFiles(datasetPath);
-        console.log(`📁 Found ${files.length} files for dataset ${dataset.name}:`, files.map(f => f.name));
+        console.log(`📁 Found ${files.length} files for dataset ${dataset.name}:`, files.map(f => ({ name: f.name, type: f.type, key: f.key })));
         
         if (files.length > 0) {
           // Store files for this dataset
           filesMap[dataset.id] = files;
           loadedFilesMap[dataset.id] = {};
           
-          // Load variables from the first file by default
-          const firstFile = files[0];
-          await loadFileVariables(dataset, firstFile, variables, columnTypes, loadedFilesMap);
+          // Load variables from the first CSV file (not JSON files)
+          const csvFiles = files.filter(file => 
+            file.name.toLowerCase().endsWith('.csv') || 
+            file.type === 'csv'
+          );
+          
+          console.log(`📊 CSV files found for ${dataset.name}:`, csvFiles.map(f => f.name));
+          
+          if (csvFiles.length > 0) {
+            const firstCsvFile = csvFiles[0];
+            console.log(`📊 Loading variables from CSV file: ${firstCsvFile.name}`);
+            await loadFileVariables(dataset, firstCsvFile, variables, columnTypes, loadedFilesMap);
+          } else {
+            console.log(`⚠️ No CSV files found for dataset ${dataset.name}, found file types:`, files.map(f => f.type || f.name.split('.').pop()));
+          }
         } else {
           console.log(`⚠️ No files found for dataset ${dataset.name}`);
         }
@@ -1947,9 +1960,27 @@ export default function ProjectVisualizationDashboard() {
     try {
       console.log(`📄 Loading variables from file: ${file.name} for dataset: ${dataset.name}`);
       
+      // Check if this is a CSV file
+      if (!file.name.toLowerCase().endsWith('.csv') && file.type !== 'csv') {
+        console.log(`⚠️ Skipping non-CSV file: ${file.name} (type: ${file.type})`);
+        return;
+      }
+      
       const response = await getDatasetFileContent(file.key);
       const csvText = await response.Body.text();
+      
+      // Validate that we got actual CSV content
+      if (!csvText || csvText.trim().length === 0) {
+        console.log(`⚠️ Empty or invalid CSV file: ${file.name}`);
+        return;
+      }
+      
       const rows = parseCSV(csvText);
+      if (!rows || rows.length === 0) {
+        console.log(`⚠️ No data rows found in CSV file: ${file.name}`);
+        return;
+      }
+      
       const samplingResult = sampleData(rows, 5000, 2000);
       
       if (samplingResult.data.length > 0) {
@@ -1996,9 +2027,17 @@ export default function ProjectVisualizationDashboard() {
         
         // Mark file as loaded
         loadedFilesMap[dataset.id][file.key] = true;
+        
+        console.log(`✅ Successfully processed ${columns.length} variables from ${file.name}`);
+      } else {
+        console.log(`⚠️ No valid data found after sampling file: ${file.name}`);
       }
     } catch (error) {
       console.error(`❌ Failed to load variables from file ${file.name}:`, error);
+      // Mark file as attempted but failed
+      if (loadedFilesMap[dataset.id]) {
+        loadedFilesMap[dataset.id][file.key] = false;
+      }
     }
   };
 
@@ -2050,16 +2089,21 @@ export default function ProjectVisualizationDashboard() {
     try {
       console.log('🔄 Refreshing datasets and variables...');
       
-      // Reload project datasets directly from the project
-      const project = await getProject(projectId);
-      const datasets = project.datasets || [];
+      // Reload project and all available datasets
+      const [project, allDatasets] = await Promise.all([
+        getProject(projectId),
+        listDatasets()
+      ]);
       
-      // Filter out any datasets that might not exist anymore
-      const filtered = datasets.filter(dataset => 
-        dataset && dataset.id && dataset.name && dataset.key
+      console.log('🔍 Project selectedDatasets:', project.selectedDatasets);
+      console.log('🔍 All available datasets:', allDatasets.length);
+      
+      // Filter datasets based on project's selectedDatasets (same as initial load)
+      const filtered = allDatasets.filter(dataset => 
+        project.selectedDatasets && project.selectedDatasets.includes(dataset.id)
       );
       
-      console.log(`📊 Found ${filtered.length} datasets to refresh`);
+      console.log(`📊 Found ${filtered.length} datasets to refresh:`, filtered.map(d => ({ id: d.id, name: d.name })));
       
       // Update the datasets state
       setProjectDatasets(filtered);
@@ -2467,6 +2511,12 @@ export default function ProjectVisualizationDashboard() {
         }
         
         console.log('🔍 Filtered datasets for dashboard:', filtered);
+        console.log('🔍 Filtered dataset details:', filtered.map(d => ({ 
+          id: d.id, 
+          name: d.name, 
+          key: d.key, 
+          path: d.path 
+        })));
         
         setProjectData(project);
         setProjectDatasets(filtered);
@@ -2478,12 +2528,14 @@ export default function ProjectVisualizationDashboard() {
           setNextWidgetId(config.nextWidgetId || 1);
           setContainerHeight(config.containerHeight || 800);
           setLastSaved(config.lastModified ? new Date(config.lastModified) : null);
+          console.log('🔍 Loaded dashboard config with', config.widgets?.length || 0, 'widgets');
         }
         
         // Load all variables from all datasets
+        console.log('🔍 About to load variables for', filtered.length, 'datasets');
         await loadAllVariables(filtered);
         
-        console.log(`Dashboard loaded with ${filtered.length} datasets`);
+        console.log(`✅ Dashboard loaded with ${filtered.length} datasets`);
       } catch (err) {
         console.error("❌ Failed to load project datasets:", err);
         setError(`Failed to load project data: ${err.message}`);
@@ -2498,17 +2550,42 @@ export default function ProjectVisualizationDashboard() {
   // ----- REFRESH TIME CHANGE DETECTION -----
   useEffect(() => {
     const incomingRefreshTime = location.state?.refreshTime;
+    const sessionRefreshTime = sessionStorage.getItem(`project_${projectId}_refresh_time`);
     
-    if (incomingRefreshTime && incomingRefreshTime !== lastSeenRefreshTime) {
+    // Check both location state and sessionStorage for refresh timestamps
+    const refreshTime = incomingRefreshTime || (sessionRefreshTime ? parseInt(sessionRefreshTime) : null);
+    
+    if (refreshTime && refreshTime !== lastSeenRefreshTime) {
       console.log('🔄 Detected project refresh, updating dashboard variables...');
-      setLastSeenRefreshTime(incomingRefreshTime);
+      console.log('📊 Refresh timestamp:', new Date(refreshTime).toLocaleTimeString());
+      setLastSeenRefreshTime(refreshTime);
+      
+      // Clear the sessionStorage refresh time since we've handled it
+      if (sessionRefreshTime) {
+        sessionStorage.removeItem(`project_${projectId}_refresh_time`);
+      }
       
       // Trigger a refresh of datasets and variables
       if (projectDatasets.length > 0) {
         refreshDatasetsAndVariables();
       }
     }
-  }, [location.state?.refreshTime, lastSeenRefreshTime, refreshDatasetsAndVariables, projectDatasets.length]);
+  }, [location.state?.refreshTime, lastSeenRefreshTime, refreshDatasetsAndVariables, projectDatasets.length, projectId]);
+
+  // ----- CHECK FOR PENDING REFRESH ON DASHBOARD LOAD -----
+  useEffect(() => {
+    if (projectDatasets.length > 0) {
+      const sessionRefreshTime = sessionStorage.getItem(`project_${projectId}_refresh_time`);
+      
+      if (sessionRefreshTime && parseInt(sessionRefreshTime) !== lastSeenRefreshTime) {
+        console.log('🔄 Found pending refresh on dashboard load, updating variables...');
+        const refreshTime = parseInt(sessionRefreshTime);
+        setLastSeenRefreshTime(refreshTime);
+        sessionStorage.removeItem(`project_${projectId}_refresh_time`);
+        refreshDatasetsAndVariables();
+      }
+    }
+  }, [projectDatasets.length, projectId, lastSeenRefreshTime, refreshDatasetsAndVariables]);
 
   // ----- COLLISION DETECTION AND RESOLUTION -----
   const checkCollisions = (updatedWidget, allWidgets) => {
@@ -3138,8 +3215,24 @@ export default function ProjectVisualizationDashboard() {
               }).length === 0 && !loading && (
                 <div className="text-center text-gray-500 text-sm py-8">
                   <div className="text-4xl mb-2">📁</div>
-                  <div>No files loaded</div>
-                  <div className="text-xs mt-1">Use the file loading panel above to load dataset files</div>
+                  <div>No dataset variables loaded</div>
+                  <div className="text-xs mt-2 bg-gray-50 p-2 rounded border text-left">
+                    <div className="font-medium mb-1">Debug Info:</div>
+                    <div>• Project datasets: {projectDatasets.length}</div>
+                    <div>• All variables keys: {Object.keys(allVariables).length}</div>
+                    <div>• Loaded files keys: {Object.keys(loadedFiles).length}</div>
+                    {Object.keys(allVariables).length > 0 && (
+                      <div className="mt-1">
+                        <div>Dataset IDs: {Object.keys(allVariables).join(', ')}</div>
+                        {Object.entries(loadedFiles).map(([datasetId, files]) => (
+                          <div key={datasetId}>
+                            {datasetId}: {Object.keys(files).length} files, loaded: {Object.values(files).filter(Boolean).length}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-xs mt-2">Try refreshing the dashboard or check console for errors</div>
                 </div>
               )}
             </div>

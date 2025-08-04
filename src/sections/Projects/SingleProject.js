@@ -247,6 +247,70 @@ export default function SingleProject() {
     }
   };
 
+  // Enhanced refresh function that updates both project data and dashboard variables
+  const handleRefreshProject = async () => {
+    try {
+      console.log('🔄 Starting enhanced project refresh...');
+      
+      // First, refresh the project data (existing functionality)
+      await loadProject(0);
+      
+      // If the project has a dashboard, also update the dashboard's dataset variables
+      if (project?.dashboardConfig) {
+        console.log('📊 Dashboard detected - updating dashboard variables...');
+        
+        try {
+          // Update the project with a refresh timestamp so the dashboard knows to update
+          const refreshTimestamp = Date.now();
+          const updateData = {
+            ...project,
+            lastDatasetRefresh: refreshTimestamp,
+            updatedAt: new Date().toISOString()
+          };
+          
+          await updateProject(id, updateData);
+          
+          // Update local project state
+          setProject(prevProject => ({
+            ...prevProject,
+            lastDatasetRefresh: refreshTimestamp,
+            updatedAt: new Date().toISOString()
+          }));
+          
+          console.log('✅ Dashboard refresh timestamp updated:', new Date(refreshTimestamp).toLocaleTimeString());
+          
+          // Store refresh time in sessionStorage so dashboard can detect it
+          sessionStorage.setItem(`project_${id}_refresh_time`, refreshTimestamp.toString());
+          
+          addNotification({
+            type: 'success',
+            message: 'Project data and dashboard variables refreshed successfully!'
+          });
+          
+        } catch (dashboardError) {
+          console.error('⚠️ Failed to update dashboard refresh timestamp:', dashboardError);
+          addNotification({
+            type: 'warning',
+            message: 'Project data refreshed, but dashboard may need manual refresh'
+          });
+        }
+      } else {
+        console.log('📊 No dashboard found - project data refreshed only');
+        addNotification({
+          type: 'success',
+          message: 'Project data refreshed successfully!'
+        });
+      }
+      
+    } catch (error) {
+      console.error('❌ Failed to refresh project:', error);
+      addNotification({
+        type: 'error',
+        message: 'Failed to refresh project data'
+      });
+    }
+  };
+
   // Load available datasets for selection
   const loadAvailableDatasets = async () => {
     try {
@@ -810,11 +874,11 @@ export default function SingleProject() {
 
         <div className="flex gap-2">
           <button
-            onClick={() => loadProject(0)}
+            onClick={handleRefreshProject}
             className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded flex items-center gap-1"
-            title="Refresh project data and update dashboard variables"
+            title="Refresh project data and sync dashboard variables with latest datasets"
           >
-            🔄 Refresh
+            🔄 Refresh & Sync
           </button>
           <select
             value={project.status}

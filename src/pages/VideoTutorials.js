@@ -176,23 +176,6 @@ export default function VideoTutorials() {
                   {tutorial.description}
                 </p>
 
-                {/* Topics */}
-                <div className="mb-4">
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-                    Topics Covered:
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {tutorial.topics.map((topic, index) => (
-                      <span
-                        key={index}
-                        className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full"
-                      >
-                        {topic}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
                 {/* Action Buttons */}
                 <div className="flex gap-3">
                   <button

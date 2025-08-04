@@ -138,6 +138,32 @@ export default function ProjectsIndexPage() {
     }
   };
 
+  const getStatusAbbreviation = (status) => {
+    switch (status) {
+      case 'active':
+        return 'Active';
+      case 'completed':
+        return 'Done';
+      case 'draft':
+        return 'Draft';
+      default:
+        return 'N/A';
+    }
+  };
+
+  const getStatusSortOrder = (status) => {
+    switch (status) {
+      case 'active':
+        return 1;
+      case 'draft':
+        return 2;
+      case 'completed':
+        return 3;
+      default:
+        return 4;
+    }
+  };
+
   const formatLastModified = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -162,11 +188,24 @@ export default function ProjectsIndexPage() {
     setSelectedProjectForSharing(null);
   };
 
-  // Filter projects by search
-  const filteredProjects = projects.filter(project =>
-    (project.title || '').toLowerCase().includes(search.toLowerCase()) ||
-    (project.description || '').toLowerCase().includes(search.toLowerCase())
-  );
+  // Filter and sort projects by search and status priority
+  const filteredProjects = projects
+    .filter(project =>
+      (project.title || '').toLowerCase().includes(search.toLowerCase()) ||
+      (project.description || '').toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => {
+      const aOrder = getStatusSortOrder(a.status);
+      const bOrder = getStatusSortOrder(b.status);
+      
+      // Primary sort by status
+      if (aOrder !== bOrder) {
+        return aOrder - bOrder;
+      }
+      
+      // Secondary sort by title alphabetically
+      return (a.title || '').localeCompare(b.title || '');
+    });
 
   return (
     <div className="min-h-screen page-bg text-textPrimary-light dark:text-textPrimary-dark">
@@ -315,18 +354,18 @@ export default function ProjectsIndexPage() {
             filteredProjects
               .filter(project => project && project.id && project.title && project.title.trim() !== '')
               .map((project) => (
-              <div key={project.id} className="bg-white dark:bg-card-dark p-4 rounded shadow hover:shadow-md transition-shadow">
+              <div key={project.id} className="bg-white dark:bg-card-dark p-4 rounded shadow hover:shadow-md transition-shadow min-h-[200px] flex flex-col">
                 <div className="flex items-center gap-2 mb-2">
                   {getStatusIcon(project.status)}
                   <h2 className="font-semibold text-md">{project.title || 'Untitled Project'}</h2>
                 </div>
-                <p className="text-sm mb-2 text-textSecondary-light dark:text-textSecondary-dark line-clamp-2">
+                <p className="text-sm mb-3 text-textSecondary-light dark:text-textSecondary-dark line-clamp-2 flex-grow">
                   {project.description || 'No description available'}
                 </p>
-                <span className={`inline-block text-xs px-2 py-1 rounded-full mb-3 font-medium ${getStatusColor(project.status)}`}>
-                  {(project.status || 'unknown').charAt(0).toUpperCase() + (project.status || 'unknown').slice(1)}
+                <span className={`inline text-xs px-2 py-0.5 rounded mb-3 font-medium w-fit ${getStatusColor(project.status)}`}>
+                  {getStatusAbbreviation(project.status)}
                 </span>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center mt-auto">
                   <div className="text-xs text-gray-500">
                     <p>{project.selectedDatasets?.length || 0} datasets</p>
                     <p>Updated {formatLastModified(project.updatedAt)}</p>
@@ -351,18 +390,13 @@ export default function ProjectsIndexPage() {
                       </button>
                     )}
                     {/* Removed Visualizations button. Visualization now accessed from SingleProject page. */}
-                    <div className="relative">
-                      <button 
-                        className="text-gray-400 hover:text-gray-600"
-                        onClick={() => handleShareProject(project)}
-                        title="Share project (Coming Soon)"
-                      >
-                        <MdOutlineShare size={16} />
-                      </button>
-                      <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs px-1 rounded-full text-[8px] leading-3">
-                        Soon
-                      </span>
-                    </div>
+                    <button 
+                      className="text-gray-400 hover:text-gray-600"
+                      onClick={() => handleShareProject(project)}
+                      title="Share project"
+                    >
+                      <MdOutlineShare size={16} />
+                    </button>
                   </div>
                 </div>
               </div>
