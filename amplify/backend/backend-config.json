@@ -78,6 +78,80 @@
       "service": "S3AndCloudFront"
     }
   },
+  "parameters": {
+    "AMPLIFY_function_S3Trigger7d3597dd_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "S3Trigger7d3597dd"
+        }
+      ]
+    },
+    "AMPLIFY_function_S3Trigger7d3597dd_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "S3Trigger7d3597dd"
+        }
+      ]
+    },
+    "AMPLIFY_function_ainotebookgenerator_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "ainotebookgenerator"
+        }
+      ]
+    },
+    "AMPLIFY_function_ainotebookgenerator_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "ainotebookgenerator"
+        }
+      ]
+    },
+    "AMPLIFY_function_ainotebookgenerator_storageRwdedatasetstorageBucketname": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "ainotebookgenerator"
+        }
+      ]
+    },
+    "AMPLIFY_function_fairscorer_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "fairscorer"
+        }
+      ]
+    },
+    "AMPLIFY_function_fairscorer_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "fairscorer"
+        }
+      ]
+    },
+    "AMPLIFY_function_kaggle_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "kaggle"
+        }
+      ]
+    },
+    "AMPLIFY_function_kaggle_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "kaggle"
+        }
+      ]
+    }
+  },
   "storage": {
     "rwdeDatasetStorage": {
       "dependsOn": [
