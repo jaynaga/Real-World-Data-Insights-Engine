@@ -53,6 +53,24 @@
           "Variables": {
             "ENV": {
               "Ref": "env"
+            },
+            "FAIR_SCORER_FUNCTION_NAME": {
+              "Fn::If": [
+                "ShouldNotCreateEnvResources",
+                "fairscorer",
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "fairscorer",
+                      "-",
+                      {
+                        "Ref": "env"
+                      }
+                    ]
+                  ]
+                }
+              ]
             }
           }
         },
@@ -147,6 +165,25 @@
                     },
                     "lambda": {
                       "Ref": "LambdaFunction"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "lambda:InvokeFunction"
+              ],
+              "Resource": {
+                "Fn::Sub": [
+                  "arn:aws:lambda:${region}:${account}:function:fairscorer*",
+                  {
+                    "region": {
+                      "Ref": "AWS::Region"
+                    },
+                    "account": {
+                      "Ref": "AWS::AccountId"
                     }
                   }
                 ]

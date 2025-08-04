@@ -10,6 +10,13 @@
           "create"
         ]
       }
+    },
+    "/kaggle": {
+      "name": "/kaggle",
+      "lambdaFunction": "kaggle",
+      "permissions": {
+        "setting": "open"
+      }
     }
   }
 }

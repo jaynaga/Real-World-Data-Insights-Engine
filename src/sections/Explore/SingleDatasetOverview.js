@@ -13,19 +13,233 @@ import {
   FiDatabase,
   FiFileText,
   FiEye,
-  FiPlus
+  FiPlus,
+  FiExternalLink
 } from 'react-icons/fi';
 import { HiOutlineDocumentText, HiOutlineGlobe } from 'react-icons/hi';
-import { loadCsvDataset } from '../../utils/storageUtils';
+import { loadDatasetFile, getFileDownloadUrl, canPreviewFile, getFileTypeDisplay } from '../../utils/dataLoaderUtils';
 import DataViewer from '../../components/DataViewer';
+import FairScoreDisplay from '../../components/FairScoreDisplay';
 import AINotebookGenerator from '../../components/AINotebookGenerator';
-import DatasetSharingModal from '../../components/DatasetSharingModal';
 import { listProjects, createProject, addDatasetToProject } from '../../services/projectService';
 import '../../styles/tokens.css';
+
+// Generate consistent color for a tag based on its text (same function as DatasetTable)
+const getTagColor = (tagText) => {
+  let hash = 0;
+  for (let i = 0; i < tagText.length; i++) {
+    const char = tagText.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  
+  const colors = [
+    // Vibrant and distinct colors
+    { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-300' },
+    { bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-300' },
+    { bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-300' },
+    { bg: 'bg-pink-100', text: 'text-pink-800', border: 'border-pink-300' },
+    { bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-300' },
+    { bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-300' },
+    { bg: 'bg-indigo-100', text: 'text-indigo-800', border: 'border-indigo-300' },
+    { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-300' },
+    { bg: 'bg-teal-100', text: 'text-teal-800', border: 'border-teal-300' },
+    { bg: 'bg-cyan-100', text: 'text-cyan-800', border: 'border-cyan-300' },
+    
+    // Deeper shades for more variety
+    { bg: 'bg-blue-200', text: 'text-blue-900', border: 'border-blue-400' },
+    { bg: 'bg-green-200', text: 'text-green-900', border: 'border-green-400' },
+    { bg: 'bg-violet-200', text: 'text-violet-900', border: 'border-violet-400' },
+    { bg: 'bg-rose-200', text: 'text-rose-900', border: 'border-rose-400' },
+    { bg: 'bg-yellow-200', text: 'text-yellow-900', border: 'border-yellow-400' },
+    { bg: 'bg-red-200', text: 'text-red-900', border: 'border-red-400' },
+    { bg: 'bg-sky-200', text: 'text-sky-900', border: 'border-sky-400' },
+    { bg: 'bg-lime-200', text: 'text-lime-900', border: 'border-lime-400' },
+    { bg: 'bg-fuchsia-200', text: 'text-fuchsia-900', border: 'border-fuchsia-400' },
+    { bg: 'bg-emerald-200', text: 'text-emerald-900', border: 'border-emerald-400' },
+    
+    // More vibrant alternatives
+    { bg: 'bg-slate-200', text: 'text-slate-800', border: 'border-slate-400' },
+    { bg: 'bg-gray-200', text: 'text-gray-800', border: 'border-gray-400' },
+    { bg: 'bg-zinc-200', text: 'text-zinc-800', border: 'border-zinc-400' },
+    { bg: 'bg-stone-200', text: 'text-stone-800', border: 'border-stone-400' },
+    { bg: 'bg-neutral-200', text: 'text-neutral-800', border: 'border-neutral-400' },
+    
+    // Additional distinct colors
+    { bg: 'bg-blue-300', text: 'text-blue-800', border: 'border-blue-500' },
+    { bg: 'bg-green-300', text: 'text-green-800', border: 'border-green-500' },
+    { bg: 'bg-purple-300', text: 'text-purple-800', border: 'border-purple-500' },
+    { bg: 'bg-pink-300', text: 'text-pink-800', border: 'border-pink-500' },
+    { bg: 'bg-yellow-300', text: 'text-yellow-800', border: 'border-yellow-500' },
+    
+    // Lighter pastels for variety
+    { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
+    { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
+    { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+    { bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200' },
+    { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' },
+    { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
+    { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
+    { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
+    { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' },
+    { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200' },
+    
+    // Even more distinct options
+    { bg: 'bg-sky-100', text: 'text-sky-800', border: 'border-sky-300' },
+    { bg: 'bg-lime-100', text: 'text-lime-800', border: 'border-lime-300' },
+    { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+    { bg: 'bg-violet-100', text: 'text-violet-800', border: 'border-violet-300' },
+    { bg: 'bg-fuchsia-100', text: 'text-fuchsia-800', border: 'border-fuchsia-300' },
+    { bg: 'bg-rose-100', text: 'text-rose-800', border: 'border-rose-300' },
+    { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+    { bg: 'bg-orange-200', text: 'text-orange-900', border: 'border-orange-400' },
+    { bg: 'bg-teal-200', text: 'text-teal-900', border: 'border-teal-400' },
+    { bg: 'bg-cyan-200', text: 'text-cyan-900', border: 'border-cyan-400' },
+    
+    // Final batch of distinct colors
+    { bg: 'bg-indigo-200', text: 'text-indigo-900', border: 'border-indigo-400' },
+    { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200' },
+    { bg: 'bg-lime-50', text: 'text-lime-700', border: 'border-lime-200' },
+    { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200' },
+    { bg: 'bg-fuchsia-50', text: 'text-fuchsia-700', border: 'border-fuchsia-200' },
+    { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
+    { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-300' },
+    { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-300' },
+    { bg: 'bg-zinc-100', text: 'text-zinc-700', border: 'border-zinc-300' },
+    { bg: 'bg-stone-100', text: 'text-stone-700', border: 'border-stone-300' }
+  ];
+  
+  return colors[Math.abs(hash) % colors.length];
+};
+
+const getTagColorDark = (tagText) => {
+  let hash = 0;
+  for (let i = 0; i < tagText.length; i++) {
+    const char = tagText.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  
+  const darkColors = [
+    { bg: 'dark:bg-blue-900', text: 'dark:text-blue-100', border: 'dark:border-blue-700' },
+    { bg: 'dark:bg-emerald-900', text: 'dark:text-emerald-100', border: 'dark:border-emerald-700' },
+    { bg: 'dark:bg-purple-900', text: 'dark:text-purple-100', border: 'dark:border-purple-700' },
+    { bg: 'dark:bg-pink-900', text: 'dark:text-pink-100', border: 'dark:border-pink-700' },
+    { bg: 'dark:bg-amber-900', text: 'dark:text-amber-100', border: 'dark:border-amber-700' },
+    { bg: 'dark:bg-red-900', text: 'dark:text-red-100', border: 'dark:border-red-700' },
+    { bg: 'dark:bg-indigo-900', text: 'dark:text-indigo-100', border: 'dark:border-indigo-700' },
+    { bg: 'dark:bg-orange-900', text: 'dark:text-orange-100', border: 'dark:border-orange-700' },
+    { bg: 'dark:bg-teal-900', text: 'dark:text-teal-100', border: 'dark:border-teal-700' },
+    { bg: 'dark:bg-cyan-900', text: 'dark:text-cyan-100', border: 'dark:border-cyan-700' },
+    
+    { bg: 'dark:bg-blue-800', text: 'dark:text-blue-200', border: 'dark:border-blue-600' },
+    { bg: 'dark:bg-green-800', text: 'dark:text-green-200', border: 'dark:border-green-600' },
+    { bg: 'dark:bg-violet-800', text: 'dark:text-violet-200', border: 'dark:border-violet-600' },
+    { bg: 'dark:bg-rose-800', text: 'dark:text-rose-200', border: 'dark:border-rose-600' },
+    { bg: 'dark:bg-yellow-800', text: 'dark:text-yellow-200', border: 'dark:border-yellow-600' },
+    { bg: 'dark:bg-sky-800', text: 'dark:text-sky-200', border: 'dark:border-sky-600' },
+    { bg: 'dark:bg-lime-800', text: 'dark:text-lime-200', border: 'dark:border-lime-600' },
+    { bg: 'dark:bg-fuchsia-800', text: 'dark:text-fuchsia-200', border: 'dark:border-fuchsia-600' },
+    { bg: 'dark:bg-emerald-800', text: 'dark:text-emerald-200', border: 'dark:border-emerald-600' },
+    { bg: 'dark:bg-orange-800', text: 'dark:text-orange-200', border: 'dark:border-orange-600' },
+    
+    { bg: 'dark:bg-slate-800', text: 'dark:text-slate-200', border: 'dark:border-slate-600' },
+    { bg: 'dark:bg-gray-800', text: 'dark:text-gray-200', border: 'dark:border-gray-600' },
+    { bg: 'dark:bg-zinc-800', text: 'dark:text-zinc-200', border: 'dark:border-zinc-600' },
+    { bg: 'dark:bg-stone-800', text: 'dark:text-stone-200', border: 'dark:border-stone-600' },
+    { bg: 'dark:bg-neutral-800', text: 'dark:text-neutral-200', border: 'dark:border-neutral-600' },
+    
+    { bg: 'dark:bg-blue-950', text: 'dark:text-blue-100', border: 'dark:border-blue-800' },
+    { bg: 'dark:bg-green-950', text: 'dark:text-green-100', border: 'dark:border-green-800' },
+    { bg: 'dark:bg-purple-950', text: 'dark:text-purple-100', border: 'dark:border-purple-800' },
+    { bg: 'dark:bg-pink-950', text: 'dark:text-pink-100', border: 'dark:border-pink-800' },
+    { bg: 'dark:bg-yellow-950', text: 'dark:text-yellow-100', border: 'dark:border-yellow-800' },
+    
+    { bg: 'dark:bg-sky-950', text: 'dark:text-sky-100', border: 'dark:border-sky-800' },
+    { bg: 'dark:bg-lime-950', text: 'dark:text-lime-100', border: 'dark:border-lime-800' },
+    { bg: 'dark:bg-violet-950', text: 'dark:text-violet-100', border: 'dark:border-violet-800' },
+    { bg: 'dark:bg-fuchsia-950', text: 'dark:text-fuchsia-100', border: 'dark:border-fuchsia-800' },
+    { bg: 'dark:bg-rose-950', text: 'dark:text-rose-100', border: 'dark:border-rose-800' },
+    
+    { bg: 'dark:bg-red-800', text: 'dark:text-red-200', border: 'dark:border-red-600' },
+    { bg: 'dark:bg-teal-800', text: 'dark:text-teal-200', border: 'dark:border-teal-600' },
+    { bg: 'dark:bg-cyan-800', text: 'dark:text-cyan-200', border: 'dark:border-cyan-600' },
+    { bg: 'dark:bg-indigo-800', text: 'dark:text-indigo-200', border: 'dark:border-indigo-600' },
+    { bg: 'dark:bg-amber-800', text: 'dark:text-amber-200', border: 'dark:border-amber-600' },
+    
+    { bg: 'dark:bg-blue-700', text: 'dark:text-blue-300', border: 'dark:border-blue-500' },
+    { bg: 'dark:bg-green-700', text: 'dark:text-green-300', border: 'dark:border-green-500' },
+    { bg: 'dark:bg-purple-700', text: 'dark:text-purple-300', border: 'dark:border-purple-500' },
+    { bg: 'dark:bg-pink-700', text: 'dark:text-pink-300', border: 'dark:border-pink-500' },
+    { bg: 'dark:bg-yellow-700', text: 'dark:text-yellow-300', border: 'dark:border-yellow-500' },
+    
+    { bg: 'dark:bg-slate-900', text: 'dark:text-slate-100', border: 'dark:border-slate-700' },
+    { bg: 'dark:bg-gray-900', text: 'dark:text-gray-100', border: 'dark:border-gray-700' },
+    { bg: 'dark:bg-zinc-900', text: 'dark:text-zinc-100', border: 'dark:border-zinc-700' },
+    { bg: 'dark:bg-stone-900', text: 'dark:text-stone-100', border: 'dark:border-stone-700' },
+    { bg: 'dark:bg-neutral-900', text: 'dark:text-neutral-100', border: 'dark:border-neutral-700' },
+    
+    { bg: 'dark:bg-red-950', text: 'dark:text-red-100', border: 'dark:border-red-800' },
+    { bg: 'dark:bg-orange-950', text: 'dark:text-orange-100', border: 'dark:border-orange-800' },
+    { bg: 'dark:bg-amber-950', text: 'dark:text-amber-100', border: 'dark:border-amber-800' },
+    { bg: 'dark:bg-teal-950', text: 'dark:text-teal-100', border: 'dark:border-teal-800' },
+    { bg: 'dark:bg-cyan-950', text: 'dark:text-cyan-100', border: 'dark:border-cyan-800' },
+    
+    { bg: 'dark:bg-emerald-950', text: 'dark:text-emerald-100', border: 'dark:border-emerald-800' },
+    { bg: 'dark:bg-indigo-950', text: 'dark:text-indigo-100', border: 'dark:border-indigo-800' },
+    { bg: 'dark:bg-sky-900', text: 'dark:text-sky-100', border: 'dark:border-sky-700' },
+    { bg: 'dark:bg-lime-900', text: 'dark:text-lime-100', border: 'dark:border-lime-700' },
+    { bg: 'dark:bg-violet-900', text: 'dark:text-violet-100', border: 'dark:border-violet-700' },
+    
+    { bg: 'dark:bg-fuchsia-900', text: 'dark:text-fuchsia-100', border: 'dark:border-fuchsia-700' },
+    { bg: 'dark:bg-rose-900', text: 'dark:text-rose-100', border: 'dark:border-rose-700' },
+    { bg: 'dark:bg-slate-700', text: 'dark:text-slate-200', border: 'dark:border-slate-500' },
+    { bg: 'dark:bg-gray-700', text: 'dark:text-gray-200', border: 'dark:border-gray-500' },
+    { bg: 'dark:bg-zinc-700', text: 'dark:text-zinc-200', border: 'dark:border-zinc-500' }
+  ];
+  
+  return darkColors[Math.abs(hash) % darkColors.length];
+};
+
+const getTagClasses = (tagText) => {
+  const lightColors = getTagColor(tagText);
+  const darkColors = getTagColorDark(tagText);
+  
+  return `${lightColors.bg} ${lightColors.text} ${lightColors.border} ${darkColors.bg} ${darkColors.text} ${darkColors.border}`;
+};
 
 export default function SingleDatasetOverview({ datasets = [], loading = false }) {
   const { datasetId } = useParams();
   const navigate = useNavigate();
+
+  // Helper function to format description with proper spacing and formatting
+  const formatDescription = (description) => {
+    if (!description) return 'No description available.';
+    
+    // Clean up the description and add proper formatting
+    return description
+      .replace(/\. /g, '.\n\n') // Add paragraph breaks after sentences
+      .replace(/: /g, ':\n') // Add line breaks after colons
+      .replace(/\n\n\n+/g, '\n\n') // Remove excessive line breaks
+      .trim();
+  };
+
+  // Helper function to truncate description for preview
+  const truncateDescription = (description, maxLength = 200) => {
+    if (!description) return 'No description available.';
+    const formatted = formatDescription(description);
+    if (formatted.length <= maxLength) return formatted;
+    return formatted.substring(0, maxLength).trim() + '...';
+  };
+
+  // Helper function to filter out dataset-info.json files
+  const filterDatasetInfoFiles = (files) => {
+    if (!files) return [];
+    return files.filter(file => !file.name?.includes('dataset-info.json') && !file.key?.endsWith('/dataset-info.json'));
+  };
+
+  // State for description modal
+  const [showDescriptionModal, setShowDescriptionModal] = useState(false);
 
   // ✅ Memoized dataset lookup
   const dataset = useMemo(() => {
@@ -48,9 +262,6 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [projectLoading, setProjectLoading] = useState(false);
 
-  // Dataset sharing state
-  const [showSharingModal, setShowSharingModal] = useState(false);
-
   // ✅ Auto-select first file when dataset loads
   useEffect(() => {
     if (dataset?.files?.length > 0 && !selectedFile) {
@@ -60,10 +271,12 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
 
   // ✅ Load CSV data when a file is selected
   useEffect(() => {
-    if (selectedFile?.key) {
+    if (selectedFile) {
       setCsvLoading(true);
       setCsvError(null);
-      loadCsvDataset(selectedFile.key, dataset?.accessLevel || 'protected')
+      
+      // Use universal data loader that handles both S3 and Kaggle
+      loadDatasetFile(selectedFile, dataset?.accessLevel || 'protected', 100)
         .then((result) => setCsvPreview(result))
         .catch((err) => setCsvError(err.message))
         .finally(() => setCsvLoading(false));
@@ -84,8 +297,10 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
       alert('Please select a file to download');
       return;
     }
-    const fileUrl = `https://${process.env.REACT_APP_S3_BUCKET}.s3.amazonaws.com/${selectedFile.key}`;
-    window.open(fileUrl, '_blank');
+    
+    // Get appropriate download URL based on file source
+    const downloadUrl = getFileDownloadUrl(selectedFile);
+    window.open(downloadUrl, '_blank');
   };
 
   // Project selection handlers
@@ -119,19 +334,12 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
 
       // Create new project if needed
       if (!selectedProjectId && newProjectName.trim()) {
-        const projectData = {
-          id: `proj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          title: newProjectName.trim(),
-          description: `Project created for dataset: ${dataset.name}`,
-          selectedDatasets: [],
-          status: 'active'
-        };
-        const newProject = await createProject(projectData);
+        const newProject = await createProject(newProjectName.trim());
         projectId = newProject.id;
       }
 
       // Add dataset to project
-      await addDatasetToProject(projectId, dataset.id);
+      await addDatasetToProject(projectId, dataset);
       
       setShowProjectModal(false);
       setSelectedProjectId('');
@@ -216,10 +424,31 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
                 <h1 className="text-xl sm:text-2xl font-semibold text-textPrimary-light dark:text-textPrimary-dark mb-2">
                   {dataset.name}
                 </h1>
+                {dataset.source === 'Kaggle' && (
+                  <span className="px-3 py-1 text-sm rounded-full bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-100 flex items-center gap-1">
+                    <FiExternalLink className="text-xs" />
+                    Kaggle Dataset
+                  </span>
+                )}
               </div>
-              <p className="text-textSecondary-light dark:text-textSecondary-dark text-sm sm:text-base">
-                {dataset.description}
-              </p>
+              <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-border-light dark:border-border-dark">
+                <h3 className="text-sm font-medium text-textPrimary-light dark:text-textPrimary-dark mb-2 flex items-center gap-2">
+                  <HiOutlineDocumentText className="text-blue-500" />
+                  Description
+                </h3>
+                <p className="text-textSecondary-light dark:text-textSecondary-dark text-sm sm:text-base leading-relaxed whitespace-pre-line">
+                  {truncateDescription(dataset.description)}
+                </p>
+                {dataset.description && dataset.description.length > 200 && (
+                  <button
+                    onClick={() => setShowDescriptionModal(true)}
+                    className="mt-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm underline flex items-center gap-1"
+                  >
+                    <FiEye className="text-xs" />
+                    Read full description
+                  </button>
+                )}
+              </div>
             </div>
             <div className="flex gap-3 flex-shrink-0">
               <button
@@ -233,12 +462,15 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
                 onClick={handleDownloadDataset}
                 className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-accent-light dark:bg-accent-dark text-white rounded-lg hover:opacity-90 text-sm"
               >
-                <FiDownload /> {selectedFile ? `Download ${selectedFile.name}` : 'Download Dataset'}
+                <FiDownload /> 
+                {selectedFile 
+                  ? (selectedFile.isKaggleFile 
+                    ? `View ${selectedFile.name || selectedFile.fileName} on Kaggle` 
+                    : `Download ${selectedFile.name || selectedFile.fileName}`)
+                  : 'Download Dataset'
+                }
               </button>
-              <button
-                onClick={() => setShowSharingModal(true)}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 border border-border-light dark:border-border-dark rounded-lg text-textPrimary-light dark:text-textPrimary-dark hover:bg-gray-50 dark:hover:bg-card-hover-dark text-sm"
-              >
+              <button className="flex items-center gap-2 px-3 sm:px-4 py-2 border border-border-light dark:border-border-dark rounded-lg text-textPrimary-light dark:text-textPrimary-dark hover:bg-gray-50 dark:hover:bg-card-hover-dark text-sm">
                 <FiShare2 /> Share
               </button>
               <button
@@ -278,7 +510,7 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
                     <FiBarChart2 className="mr-2" /> Data Files
                   </div>
                   <div className="text-textPrimary-light dark:text-textPrimary-dark font-medium">
-                    {dataset?.dataFileCount || dataset?.files?.length || 0}
+                    {filterDatasetInfoFiles(dataset?.files).length}
                     {dataset?.metadataFileCount > 0 && (
                       <span className="text-sm text-purple-600 dark:text-purple-400 ml-2">
                         +{dataset.metadataFileCount} metadata
@@ -303,13 +535,53 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
                   </div>
                 </div>
               </div>
+              
+              {/* FAIR Score Section - Full Display for Individual Dataset Page */}
+              <div className="mt-6">
+                <FairScoreDisplay datasetKey={dataset?.key} compact={false} />
+              </div>
             </div>
+
+            {/* Kaggle Dataset Information */}
+            {dataset?.source === 'Kaggle' && (
+              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <FiExternalLink className="text-orange-600 dark:text-orange-400" />
+                  <h3 className="font-medium text-orange-800 dark:text-orange-200">External Dataset from Kaggle</h3>
+                </div>
+                <p className="text-sm text-orange-700 dark:text-orange-300 mb-3">
+                  This dataset is hosted on Kaggle and accessed through their API. The data remains on Kaggle's servers and is not stored in our system.
+                </p>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-200 rounded">
+                    Downloads: {dataset.downloadCount || 'N/A'}
+                  </span>
+                  <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-200 rounded">
+                    Votes: {dataset.voteCount || 'N/A'}
+                  </span>
+                  {dataset.license && (
+                    <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-200 rounded">
+                      License: {dataset.license}
+                    </span>
+                  )}
+                  <a 
+                    href={dataset.kaggleUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="px-2 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 transition-colors flex items-center gap-1"
+                  >
+                    <FiExternalLink className="text-xs" />
+                    View on Kaggle
+                  </a>
+                </div>
+              </div>
+            )}
 
             {/* Dataset Files List */}
             <div className="bg-white dark:bg-card-dark rounded-lg border border-border-light dark:border-border-dark p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-textPrimary-light dark:text-textPrimary-dark">
-                  Data Files ({dataset?.dataFileCount || dataset?.files?.length || 0})
+                  Data Files ({dataset?.files ? dataset.files.filter(file => !file.name?.includes('dataset-info.json') && !file.key?.endsWith('/dataset-info.json')).length : 0})
                 </h2>
                 <div className="text-sm text-textSecondary-light dark:text-textSecondary-dark">
                   {dataset?.metadataFileCount > 0 && (
@@ -317,9 +589,11 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
                   )}
                 </div>
               </div>
-              {dataset?.files && dataset.files.length > 0 ? (
+              {dataset?.files && dataset.files.filter(file => !file.name?.includes('dataset-info.json') && !file.key?.endsWith('/dataset-info.json')).length > 0 ? (
                 <div className="space-y-2 max-h-80 overflow-y-auto">
-                  {dataset.files.map((file, index) => (
+                  {dataset.files
+                    .filter(file => !file.name?.includes('dataset-info.json') && !file.key?.endsWith('/dataset-info.json'))
+                    .map((file, index) => (
                     <div
                       key={index}
                       className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedFile?.key === file.key
@@ -334,11 +608,21 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
                             }`} />
                           <div>
                             <h3 className="font-medium text-textPrimary-light dark:text-textPrimary-dark">
-                              {file.name}
+                              {file.name || file.fileName}
+                              {file.isKaggleFile && (
+                                <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-100">
+                                  Kaggle
+                                </span>
+                              )}
                             </h3>
                             <p className="text-sm text-textSecondary-light dark:text-textSecondary-dark">
-                              {formatFileSize(file.size)} • {file.lastModified ? new Date(file.lastModified).toLocaleDateString() : 'No date'}
+                              {formatFileSize(file.size)} • {getFileTypeDisplay(file)} • {file.lastModified ? new Date(file.lastModified).toLocaleDateString() : 'No date'}
                             </p>
+                            {!canPreviewFile(file) && (
+                              <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                                Preview not available for this file type
+                              </p>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -359,13 +643,15 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
             </div>
 
             {/* Metadata Files List */}
-            {dataset?.metadataFiles && dataset.metadataFiles.length > 0 && (
+            {dataset?.metadataFiles && dataset.metadataFiles.filter(file => !file.name?.includes('dataset-info.json') && !file.key?.endsWith('/dataset-info.json')).length > 0 && (
               <div className="bg-white dark:bg-card-dark rounded-lg border border-border-light dark:border-border-dark p-6">
                 <h2 className="text-lg font-semibold text-textPrimary-light dark:text-textPrimary-dark mb-4">
-                  Metadata Files ({dataset.metadataFiles.length})
+                  Metadata Files ({dataset.metadataFiles.filter(file => !file.name?.includes('dataset-info.json') && !file.key?.endsWith('/dataset-info.json')).length})
                 </h2>
                 <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {dataset.metadataFiles.map((file, index) => (
+                  {dataset.metadataFiles
+                    .filter(file => !file.name?.includes('dataset-info.json') && !file.key?.endsWith('/dataset-info.json'))
+                    .map((file, index) => (
                     <div
                       key={`metadata-${index}`}
                       className="p-3 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
@@ -405,34 +691,6 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
               </div>
             )}
 
-            {/* Enhanced Data Preview */}
-            <div className="bg-white dark:bg-card-dark rounded-lg border border-border-light dark:border-border-dark p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-textPrimary-light dark:text-textPrimary-dark">
-                  Data Preview
-                </h2>
-                {selectedFile && (
-                  <span className="text-sm text-textSecondary-light dark:text-textSecondary-dark">
-                    Viewing: {selectedFile.name}
-                  </span>
-                )}
-              </div>
-              {selectedFile ? (
-                <DataViewer
-                  csvData={csvPreview}
-                  isLoading={csvLoading}
-                  error={csvError}
-                />
-              ) : (
-                <div className="text-center py-8">
-                  <FiFileText className="mx-auto text-4xl text-textSecondary-light dark:text-textSecondary-dark mb-4" />
-                  <p className="text-textSecondary-light dark:text-textSecondary-dark">
-                    Select a file from the list above to preview its contents
-                  </p>
-                </div>
-              )}
-            </div>
-
             {/* Data Schema Summary */}
             <div className="bg-white dark:bg-card-dark rounded-lg border border-border-light dark:border-border-dark p-6">
               <h2 className="text-lg font-semibold text-textPrimary-light dark:text-textPrimary-dark mb-4">
@@ -452,7 +710,12 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
                     </div>
                     <div className="p-4 bg-gray-50 dark:bg-surface-dark rounded-lg">
                       <div className="text-sm text-textSecondary-light dark:text-textSecondary-dark mb-1">Total Rows</div>
-                      <div className="text-2xl font-semibold text-textPrimary-light dark:text-textPrimary-dark">{csvPreview.rowCount.toLocaleString()}</div>
+                      <div className="text-2xl font-semibold text-textPrimary-light dark:text-textPrimary-dark">
+                        {(csvPreview.totalRows || csvPreview.rowCount || 0).toLocaleString()}
+                        {csvPreview.isPreview && (
+                          <span className="text-sm text-orange-600 dark:text-orange-400 ml-1">(preview)</span>
+                        )}
+                      </div>
                     </div>
                     <div className="p-4 bg-gray-50 dark:bg-surface-dark rounded-lg">
                       <div className="text-sm text-textSecondary-light dark:text-textSecondary-dark mb-1">File Format</div>
@@ -464,6 +727,39 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
                 <span className="text-textSecondary-light dark:text-textSecondary-dark">
                   {selectedFile ? 'Loading file information...' : 'Select a file to view its schema information.'}
                 </span>
+              )}
+            </div>
+
+            {/* Enhanced Data Preview */}
+            <div className="bg-white dark:bg-card-dark rounded-lg border border-border-light dark:border-border-dark p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-textPrimary-light dark:text-textPrimary-dark">
+                  Data Preview
+                </h2>
+                {selectedFile && (
+                  <div className="text-sm text-textSecondary-light dark:text-textSecondary-dark">
+                    <span>Viewing: {selectedFile.name || selectedFile.fileName}</span>
+                    {selectedFile.isKaggleFile && (
+                      <div className="mt-1 text-xs text-orange-600 dark:text-orange-400">
+                        Limited preview - Data streamed from Kaggle
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              {selectedFile ? (
+                <DataViewer
+                  csvData={csvPreview}
+                  isLoading={csvLoading}
+                  error={csvError}
+                />
+              ) : (
+                <div className="text-center py-8">
+                  <FiFileText className="mx-auto text-4xl text-textSecondary-light dark:text-textSecondary-dark mb-4" />
+                  <p className="text-textSecondary-light dark:text-textSecondary-dark">
+                    Select a file from the list above to preview its contents
+                  </p>
+                </div>
               )}
             </div>
           </div>
@@ -485,7 +781,7 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
                 <div className="flex items-center text-textPrimary-light dark:text-textPrimary-dark text-sm sm:text-base">
                   <FiFileText className="mr-2 text-textSecondary-light dark:text-textSecondary-dark" />
                   <span className="font-medium">Data Files:</span>
-                  <span className="ml-1">{dataset?.dataFileCount || dataset?.files?.length || 0}</span>
+                  <span className="ml-1">{dataset?.files ? dataset.files.filter(file => !file.name?.includes('dataset-info.json') && !file.key?.endsWith('/dataset-info.json')).length : 0}</span>
                 </div>
                 {dataset?.metadataFileCount > 0 && (
                   <div className="flex items-center text-textPrimary-light dark:text-textPrimary-dark text-sm sm:text-base">
@@ -528,7 +824,7 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
                 {dataset?.tags && dataset.tags.length > 0 ? dataset.tags.map((tag, index) => (
                   <span
                     key={index}
-                    className="inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-100"
+                    className={`inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm border ${getTagClasses(tag)}`}
                   >
                     <FiTag className="mr-1" />
                     {tag}
@@ -655,12 +951,40 @@ export default function SingleDatasetOverview({ datasets = [], loading = false }
         </div>
       )}
 
-      {/* Dataset Sharing Modal */}
-      <DatasetSharingModal
-        isOpen={showSharingModal}
-        onClose={() => setShowSharingModal(false)}
-        dataset={dataset}
-      />
+      {/* Full Description Modal */}
+      {showDescriptionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-textPrimary-light dark:text-textPrimary-dark flex items-center gap-2">
+                <HiOutlineDocumentText className="text-blue-500" />
+                Full Description - {dataset.title}
+              </h3>
+              <button
+                onClick={() => setShowDescriptionModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              <p className="text-textSecondary-light dark:text-textSecondary-dark text-base leading-relaxed whitespace-pre-line">
+                {formatDescription(dataset.description)}
+              </p>
+            </div>
+            <div className="flex justify-end p-6 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => setShowDescriptionModal(false)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

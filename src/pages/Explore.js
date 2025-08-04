@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { listDatasets } from '../utils/storageUtils';
 import AIDatasetAssistant from '../components/AIDatasetAssistant';
+import FairScoreDisplay from '../components/FairScoreDisplay';
 import { FaRobot } from 'react-icons/fa';
 
 export default function Explore() {
@@ -13,6 +14,87 @@ export default function Explore() {
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const handleOpenAIAssistant = () => setShowAIAssistant(true);
   const handleCloseAIAssistant = () => setShowAIAssistant(false);
+
+  // Generate dynamic tags based on dataset content and file types
+  const generateDatasetTags = (dataset) => {
+    // If user has provided tags, use only those
+    if (dataset.userTags && dataset.userTags.length > 0) {
+      return [...new Set(dataset.userTags)]; // Remove duplicates and return user tags only
+    }
+    
+    // If no user tags, generate automatic tags
+    const tags = [];
+    
+    // Add tags based on file types
+    const fileExtensions = dataset.files?.map(file => 
+      file.key ? file.key.split('.').pop()?.toLowerCase() : ''
+    ).filter(ext => ext) || [];
+    
+    const uniqueExtensions = [...new Set(fileExtensions)];
+    
+    // Map file extensions to meaningful tags
+    const extensionTagMap = {
+      'csv': 'CSV Data',
+      'json': 'JSON Data',
+      'xlsx': 'Excel Data',
+      'xls': 'Excel Data',
+      'txt': 'Text Data',
+      'pdf': 'Documentation',
+      'md': 'Documentation',
+      'png': 'Images',
+      'jpg': 'Images',
+      'jpeg': 'Images',
+      'parquet': 'Big Data',
+      'zip': 'Compressed',
+      'tar': 'Archive'
+    };
+    
+    uniqueExtensions.forEach(ext => {
+      if (extensionTagMap[ext]) {
+        tags.push(extensionTagMap[ext]);
+      }
+    });
+    
+    // Add tags based on dataset name patterns
+    const namePattern = dataset.name.toLowerCase();
+    if (namePattern.includes('hospital') || namePattern.includes('patient') || namePattern.includes('medical')) {
+      tags.push('Healthcare');
+    }
+    if (namePattern.includes('synthea') || namePattern.includes('synthetic')) {
+      tags.push('Synthetic Data');
+    }
+    if (namePattern.includes('covid') || namePattern.includes('pandemic')) {
+      tags.push('Public Health');
+    }
+    if (namePattern.includes('census') || namePattern.includes('demographic')) {
+      tags.push('Demographics');
+    }
+    if (namePattern.includes('finance') || namePattern.includes('economic')) {
+      tags.push('Financial');
+    }
+    
+    // Add size-based tags
+    if (dataset.size > 100 * 1024 * 1024) { // > 100MB
+      tags.push('Large Dataset');
+    } else if (dataset.size < 1024 * 1024) { // < 1MB
+      tags.push('Small Dataset');
+    }
+    
+    // Add file count based tags
+    if (dataset.fileCount > 10) {
+      tags.push('Multi-file');
+    } else if (dataset.fileCount === 1) {
+      tags.push('Single File');
+    }
+    
+    // Always add dataset tag if no other tags exist
+    if (tags.length === 0) {
+      tags.push('Dataset');
+    }
+    
+    // Remove duplicates and return
+    return [...new Set(tags)];
+  };
 
   const loadDatasets = useCallback(async () => {
     try {
@@ -34,10 +116,10 @@ export default function Explore() {
       const transformedDatasets = rawDatasets.map(dataset => ({
         id: dataset.id,
         name: dataset.name,
-        description: `Dataset from ${dataset.path} (${dataset.source})`,
-        tags: ['Synthea', 'Healthcare', 'CSV'],
+        description: dataset.userDescription || `Dataset from ${dataset.path} (${dataset.source})`,
+        tags: generateDatasetTags(dataset), // Use dynamic tags with user metadata
         date: dataset.lastModified.toISOString().split('T')[0],
-        type: dataset.format.toUpperCase(),
+        type: dataset.userType || dataset.format.toUpperCase(),
         size: formatFileSize(dataset.size),
         key: dataset.key
       }));
@@ -166,6 +248,12 @@ export default function Explore() {
                 <p className="text-textSecondary-light dark:text-textSecondary-dark mb-4 line-clamp-2">
                   {dataset.description}
                 </p>
+                
+                {/* FAIR Score Section */}
+                <div className="mb-4">
+                  <FairScoreDisplay datasetKey={dataset.key} compact={true} />
+                </div>
+
                 <div className="flex flex-wrap gap-2 mb-4">
                   {dataset.tags.map((tag, index) => (
                     <span

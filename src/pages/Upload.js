@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from "react";
-import { FiUploadCloud, FiFile, FiX, FiPlus, FiDownload, FiInfo, FiFileText } from "react-icons/fi";
+import { FiUploadCloud, FiFile, FiX, FiPlus, FiDownload, FiInfo, FiFileText, FiCloud, FiHardDrive } from "react-icons/fi";
 import { uploadFile, listUserUploads, getFileUrl } from '../utils/storageUtils';
-import UploadMethodSelector from '../components/UploadMethodSelector';
+import CloudStorageSelector from '../components/CloudStorageSelector';
 import '../styles/tokens.css';
 
 export default function Upload() {
-  const [showMethodSelector, setShowMethodSelector] = useState(true);
+  const [uploadMethod, setUploadMethod] = useState('local'); // 'local' or 'cloud'
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     type: "Survey Data",
-    geography: "North America",
+    geography: "Worldwide",
     demographics: [],
     tags: [],
     files: [], // Multiple files per dataset
-    metadataFiles: [] // Multiple metadata files
+    metadataFiles: [], // Multiple metadata files
+    cloudFiles: [] // Files from cloud storage
   });
   const [uploads, setUploads] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -30,16 +31,67 @@ export default function Upload() {
     "Clinical Trials",
     "Longitudinal Studies",
     "Census Data",
-    "Administrative Data"
+    "Administrative Data",
+    "Genomic Data",
+    "Environmental Data",
+    "Financial Data",
+    "Educational Data",
+    "Healthcare Records",
+    "Social Media Data",
+    "IoT Sensor Data",
+    "Geospatial Data",
+    "Time Series Data",
+    "Text/Document Corpus",
+    "Image Dataset",
+    "Audio Dataset",
+    "Video Dataset",
+    "Scientific Measurements",
+    "Experimental Data",
+    "Behavioral Data",
+    "Demographic Data",
+    "Market Research",
+    "Government Statistics",
+    "Public Health Data"
   ];
 
   const geographyOptions = [
+    "Worldwide",
     "North America",
+    "United States",
+    "Canada",
+    "Mexico",
     "Europe",
+    "United Kingdom",
+    "Germany",
+    "France",
+    "Spain",
+    "Italy",
+    "Netherlands",
+    "Scandinavia",
+    "Eastern Europe",
     "Asia",
+    "China",
+    "Japan",
+    "India",
+    "Southeast Asia",
+    "South Korea",
+    "Middle East",
     "Africa",
+    "South Africa",
+    "West Africa",
+    "East Africa",
+    "North Africa",
     "South America",
-    "Australia/Oceania"
+    "Brazil",
+    "Argentina",
+    "Colombia",
+    "Australia/Oceania",
+    "Australia",
+    "New Zealand",
+    "Pacific Islands",
+    "Antarctica",
+    "Multi-Regional",
+    "Cross-Continental"
   ];
 
   const demographicOptions = [
@@ -253,11 +305,32 @@ export default function Upload() {
     }, 500);
   };
 
+  const handleCloudFilesSelected = (cloudFiles) => {
+    setFormData(prev => ({
+      ...prev,
+      cloudFiles: [...prev.cloudFiles, ...cloudFiles]
+    }));
+  };
+
+  const handleCloudFileRemove = (fileId) => {
+    setFormData(prev => ({
+      ...prev,
+      cloudFiles: prev.cloudFiles.filter(file => file.id !== fileId)
+    }));
+  };
+
   const validateForm = () => {
     const newErrors = {};
     if (!formData.name || !formData.name.trim()) newErrors.name = "Dataset name is required";
     if (!formData.description || !formData.description.trim()) newErrors.description = "Description is required";
-    if (!formData.files || formData.files.length === 0) newErrors.files = "At least one data file is required";
+    
+    // Check for either local files or cloud files
+    const hasLocalFiles = formData.files && formData.files.length > 0;
+    const hasCloudFiles = formData.cloudFiles && formData.cloudFiles.length > 0;
+    if (!hasLocalFiles && !hasCloudFiles) {
+      newErrors.files = "At least one data file is required (local or cloud)";
+    }
+    
     if (!formData.demographics || formData.demographics.length === 0) newErrors.demographics = "Select at least one demographic";
     if (!formData.tags || formData.tags.length === 0) newErrors.tags = "Add at least one tag";
     return newErrors;
@@ -329,8 +402,22 @@ export default function Upload() {
         createdAt: new Date().toISOString(),
         fileCount: (formData.files || []).length,
         metadataFileCount: (formData.metadataFiles || []).length,
+        cloudFileCount: (formData.cloudFiles || []).length,
         files: (formData.files || []).map(f => f.name),
-        metadataFiles: (formData.metadataFiles || []).map(f => f.name)
+        metadataFiles: (formData.metadataFiles || []).map(f => f.name),
+        cloudFiles: (formData.cloudFiles || []).map(f => ({
+          id: f.id,
+          name: f.name,
+          size: f.size,
+          type: f.type,
+          cloudProvider: f.cloudProvider,
+          downloadUrl: f.downloadUrl,
+          shareSettings: f.shareSettings,
+          path: f.path
+        })),
+        isSharedDataset: formData.cloudFiles && formData.cloudFiles.length > 0,
+        shareSettings: formData.cloudFiles && formData.cloudFiles.length > 0 ? 
+          formData.cloudFiles[0].shareSettings : null
       };
 
       const infoFileName = `${datasetPath}/dataset-info.json`;
@@ -342,11 +429,12 @@ export default function Upload() {
         name: "",
         description: "",
         type: "Survey Data",
-        geography: "North America",
+        geography: "Worldwide",
         demographics: [],
         tags: [],
         files: [],
-        metadataFiles: []
+        metadataFiles: [],
+        cloudFiles: []
       });
       setUploadProgress(0);
       setErrors({});
@@ -414,59 +502,77 @@ export default function Upload() {
     }
   };
 
-  const handleInternalUpload = () => {
-    setShowMethodSelector(false);
-  };
-
-  const handleDatasetRegistered = async () => {
-    // Refresh the recent uploads list
-    await loadUploads();
-    setShowMethodSelector(true);
-  };
-
-  // Show method selector first
-  if (showMethodSelector) {
-    return (
-      <div className="min-h-screen bg-surface-light dark:bg-surface-dark p-6">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8 text-textPrimary-light dark:text-textPrimary-dark">
-            Add Dataset
-          </h1>
-          <UploadMethodSelector
-            isOpen={true}
-            onClose={() => {}} // No close action needed since this is the main page
-            onInternalUpload={handleInternalUpload}
-            onDatasetRegistered={handleDatasetRegistered}
-          />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-surface-light dark:bg-surface-dark p-6">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
-          <button
-            onClick={() => setShowMethodSelector(true)}
-            className="px-4 py-2 text-accent-light dark:text-accent-dark hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg border border-border-light dark:border-border-dark"
-          >
-            ← Back to Upload Options
-          </button>
-          <h1 className="text-3xl font-bold text-textPrimary-light dark:text-textPrimary-dark">
-            Upload Dataset - Internal Storage
-          </h1>
+        <h1 className="text-3xl font-bold mb-8 text-textPrimary-light dark:text-textPrimary-dark">
+          Upload Dataset
+        </h1>
+
+        {/* Upload Method Selector */}
+        <div className="bg-white dark:bg-card-dark rounded-lg p-6 shadow-sm mb-6">
+          <h2 className="text-lg font-semibold text-textPrimary-light dark:text-textPrimary-dark mb-4">
+            Choose Upload Method
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button
+              type="button"
+              onClick={() => setUploadMethod('local')}
+              className={`p-4 border-2 rounded-lg text-left transition-colors ${
+                uploadMethod === 'local'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <FiHardDrive className={`${uploadMethod === 'local' ? 'text-blue-600' : 'text-gray-400'}`} size={24} />
+                <div>
+                  <h3 className="font-medium text-textPrimary-light dark:text-textPrimary-dark">
+                    Upload Local Files
+                  </h3>
+                  <p className="text-sm text-textSecondary-light dark:text-textSecondary-dark">
+                    Upload files directly from your computer
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setUploadMethod('cloud')}
+              className={`p-4 border-2 rounded-lg text-left transition-colors ${
+                uploadMethod === 'cloud'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <FiCloud className={`${uploadMethod === 'cloud' ? 'text-blue-600' : 'text-gray-400'}`} size={24} />
+                <div>
+                  <h3 className="font-medium text-textPrimary-light dark:text-textPrimary-dark">
+                    Import from Cloud Storage
+                  </h3>
+                  <p className="text-sm text-textSecondary-light dark:text-textSecondary-dark">
+                    Connect to Google Drive, Dropbox, S3, Azure, etc.
+                  </p>
+                </div>
+              </div>
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Dataset Files Upload Area */}
-          <div className="bg-white dark:bg-card-dark rounded-lg p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <FiFile className="text-accent-light dark:text-accent-dark" />
-              <h2 className="text-lg font-semibold text-textPrimary-light dark:text-textPrimary-dark">
-                Dataset Files
-              </h2>
-            </div>
+          {/* Conditional rendering based on upload method */}
+          {uploadMethod === 'local' ? (
+            <>
+            {/* Local File Upload Section */}
+            <div className="bg-white dark:bg-card-dark rounded-lg p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <FiFile className="text-accent-light dark:text-accent-dark" />
+                <h2 className="text-lg font-semibold text-textPrimary-light dark:text-textPrimary-dark">
+                  Dataset Files
+                </h2>
+              </div>
 
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
               <div className="flex items-start gap-2">
@@ -645,6 +751,55 @@ export default function Upload() {
               <p className="mt-2 text-sm text-red-500 dark:text-red-400">{errors.metadataFiles}</p>
             )}
           </div>
+          </>
+          ) : (
+            /* Cloud Storage Import Section */
+            <CloudStorageSelector
+              onFilesSelected={handleCloudFilesSelected}
+              onError={(error) => setErrors(prev => ({ ...prev, cloud: error }))}
+            />
+          )}
+
+          {/* Display selected cloud files */}
+          {formData.cloudFiles && formData.cloudFiles.length > 0 && (
+            <div className="bg-white dark:bg-card-dark rounded-lg p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <FiCloud className="text-blue-600" />
+                <h2 className="text-lg font-semibold text-textPrimary-light dark:text-textPrimary-dark">
+                  Selected Cloud Files ({formData.cloudFiles.length})
+                </h2>
+              </div>
+              
+              <div className="space-y-2">
+                {formData.cloudFiles.map((file) => (
+                  <div key={file.id} className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <FiFile className="text-gray-400" />
+                      <div>
+                        <div className="font-medium text-textPrimary-light dark:text-textPrimary-dark">
+                          {file.name}
+                        </div>
+                        <div className="text-sm text-textSecondary-light dark:text-textSecondary-dark">
+                          {file.cloudProvider} • {(file.size / 1024 / 1024).toFixed(2)} MB
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCloudFileRemove(file.id)}
+                      className="text-red-500 hover:text-red-700 p-1"
+                    >
+                      <FiX size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {errors.cloud && (
+                <p className="mt-2 text-sm text-red-500 dark:text-red-400">{errors.cloud}</p>
+              )}
+            </div>
+          )}
 
           {/* Dataset Information */}
           <div className="bg-white dark:bg-card-dark rounded-lg p-6 shadow-sm space-y-4">

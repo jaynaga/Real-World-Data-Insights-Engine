@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaSave } from 'react-icons/fa';
 import { createProject } from '../services/projectService';
+import { useDemoMode } from '../context/DemoContext';
 
 export default function TestCreateProject() {
+    const { isDemoMode } = useDemoMode();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -163,18 +165,20 @@ export default function TestCreateProject() {
                 </div>
 
                 {/* Debug Info */}
-                <div className="mt-8 max-w-2xl">
-                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                        <h3 className="text-sm font-medium mb-2">Debug Instructions:</h3>
-                        <ol className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                            <li>1. Open browser developer tools (F12)</li>
-                            <li>2. Go to Console tab</li>
-                            <li>3. Fill in the title and click "Create Test Project"</li>
-                            <li>4. Watch the console for detailed logging</li>
-                            <li>5. Look for where the process stops or fails</li>
-                        </ol>
+                {!isDemoMode && (
+                    <div className="mt-8 max-w-2xl">
+                        <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                            <h3 className="text-sm font-medium mb-2">Debug Instructions:</h3>
+                            <ol className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                                <li>1. Open browser developer tools (F12)</li>
+                                <li>2. Go to Console tab</li>
+                                <li>3. Fill in the title and click "Create Test Project"</li>
+                                <li>4. Watch the console for detailed logging</li>
+                                <li>5. Look for where the process stops or fails</li>
+                            </ol>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );

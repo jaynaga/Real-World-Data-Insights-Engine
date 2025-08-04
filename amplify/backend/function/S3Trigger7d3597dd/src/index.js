@@ -1,6 +1,9 @@
 
-const AWS = require('aws-sdk');
-const s3 = new AWS.S3();
+const { S3Client, HeadObjectCommand, CopyObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
+
+const s3 = new S3Client();
+const lambda = new LambdaClient();
 
 exports.handler = async function (event) {
   console.log('Received S3 event:', JSON.stringify(event, null, 2));
@@ -18,13 +21,58 @@ exports.handler = async function (event) {
     }
 
     // Get file metadata
-    const headData = await s3.headObject({ Bucket: bucket, Key: key }).promise();
+    const headData = await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
     const metadata = headData.Metadata || {};
     const contentType = headData.ContentType;
     
-    // Validate file type
-    const validTypes = ['text/csv', 'application/json', 'application/vnd.ms-excel', 
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+    // Validate file type - expanded to support more dataset formats
+    const validTypes = [
+      // Spreadsheet and structured data
+      'text/csv', 
+      'application/json', 
+      'application/vnd.ms-excel', 
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/tab-separated-values',
+      'application/x-sqlite3',
+      
+      // Text and document formats
+      'text/plain',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/xml',
+      'application/xml',
+      
+      // Data interchange formats
+      'application/x-parquet',
+      'application/x-hdf5',
+      'application/x-netcdf',
+      
+      // Image formats (for image datasets)
+      'image/jpeg',
+      'image/png',
+      'image/tiff',
+      'image/bmp',
+      'image/gif',
+      
+      // Audio formats (for audio datasets)
+      'audio/wav',
+      'audio/mp3',
+      'audio/mpeg',
+      'audio/flac',
+      
+      // Video formats (for video datasets)
+      'video/mp4',
+      'video/avi',
+      'video/mov',
+      'video/webm',
+      
+      // Compressed archives
+      'application/zip',
+      'application/x-tar',
+      'application/gzip',
+      'application/x-7z-compressed'
+    ];
     if (!validTypes.includes(contentType)) {
       console.error(`Invalid file type: ${contentType}`);
       return;
@@ -40,19 +88,46 @@ exports.handler = async function (event) {
 
     // Move file to processed directory
     const newKey = key.replace('user-uploads/', 'processed/');
-    await s3.copyObject({
+    await s3.send(new CopyObjectCommand({
       Bucket: bucket,
       CopySource: `${bucket}/${key}`,
       Key: newKey,
       Metadata: processingMetadata,
       MetadataDirective: 'REPLACE'
-    }).promise();
+    }));
+
+    // Invoke FAIR scorer Lambda function
+    try {
+      const fairScorerPayload = {
+        Records: [{
+          s3: {
+            bucket: { name: bucket },
+            object: { key: newKey }
+          },
+          userIdentity: {
+            principalId: metadata.submittedBy || 'system'
+          }
+        }]
+      };
+
+      console.log('Invoking FAIR scorer for:', newKey);
+      await lambda.send(new InvokeCommand({
+        FunctionName: process.env.FAIR_SCORER_FUNCTION_NAME || 'fairscorer',
+        InvocationType: 'Event', // Asynchronous invocation
+        Payload: JSON.stringify(fairScorerPayload)
+      }));
+
+      console.log('FAIR scorer invoked successfully');
+    } catch (fairScorerError) {
+      console.error('Error invoking FAIR scorer:', fairScorerError);
+      // Don't fail the main process if FAIR scoring fails
+    }
 
     // Delete the original file
-    await s3.deleteObject({
+    await s3.send(new DeleteObjectCommand({
       Bucket: bucket,
       Key: key
-    }).promise();
+    }));
 
     console.log(`Successfully processed file: ${key} -> ${newKey}`);
     return {

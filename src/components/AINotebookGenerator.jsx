@@ -9,7 +9,8 @@ import {
   FiCheckCircle,
   FiAlertCircle,
   FiStar,
-  FiDatabase
+  FiDatabase,
+  FiRefreshCw
 } from 'react-icons/fi';
 import NotebookGeneratorService from '../services/notebookGeneratorService';
 
@@ -18,7 +19,8 @@ const AINotebookGenerator = ({
   onClose,
   projectId,
   availableFiles = [],
-  onNotebookGenerated
+  onNotebookGenerated,
+  refreshTrigger = null // Add refresh trigger prop
 }) => {
   const [step, setStep] = useState('input'); // 'input', 'generating', 'complete', 'error'
   const [researchGoal, setResearchGoal] = useState('');
@@ -30,6 +32,7 @@ const AINotebookGenerator = ({
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [expertiseLevel, setExpertiseLevel] = useState('intermediate');
   const [analysisDepth, setAnalysisDepth] = useState('standard');
+  const [suggestionsKey, setSuggestionsKey] = useState(0); // Key to force re-generation
 
   // Initialize suggestions based on available files
   useEffect(() => {
@@ -40,7 +43,23 @@ const AINotebookGenerator = ({
       const researchSuggestions = NotebookGeneratorService.getSuggestedResearchIdeas(formattedFiles);
       setSuggestions(researchSuggestions);
     }
-  }, [availableFiles]);
+  }, [availableFiles, suggestionsKey]); // Add suggestionsKey as dependency
+
+  // Refresh suggestions when modal opens
+  useEffect(() => {
+    if (isOpen && availableFiles.length > 0) {
+      // Force refresh of suggestions when modal opens
+      setSuggestionsKey(prev => prev + 1);
+    }
+  }, [isOpen, availableFiles.length]);
+
+  // Refresh suggestions when external refresh trigger changes
+  useEffect(() => {
+    if (refreshTrigger && availableFiles.length > 0) {
+      console.log('🔄 AI Notebook Generator: Refreshing suggestions due to project refresh');
+      setSuggestionsKey(prev => prev + 1);
+    }
+  }, [refreshTrigger, availableFiles.length]);
 
   const handleSuggestionClick = (suggestion) => {
     setResearchGoal(suggestion.goal);
@@ -117,6 +136,10 @@ const AINotebookGenerator = ({
     setError(null);
     setGeneratedNotebook(null);
     setShowSuggestions(true);
+  };
+
+  const handleRefreshSuggestions = () => {
+    setSuggestionsKey(Date.now());
   };
 
   const renderInputStep = () => (
@@ -222,10 +245,19 @@ const AINotebookGenerator = ({
       {/* Research Suggestions */}
       {showSuggestions && suggestions.length > 0 && (
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-          <h4 className="font-medium text-textPrimary-light dark:text-textPrimary-dark mb-3 flex items-center">
-            <FiStar className="w-4 h-4 mr-2 text-blue-500" />
-            Suggested Research Ideas
-          </h4>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="font-medium text-textPrimary-light dark:text-textPrimary-dark flex items-center">
+              <FiStar className="w-4 h-4 mr-2 text-blue-500" />
+              Suggested Research Ideas
+            </h4>
+            <button
+              onClick={handleRefreshSuggestions}
+              className="p-1.5 text-textSecondary-light dark:text-textSecondary-dark hover:text-textPrimary-light dark:hover:text-textPrimary-dark transition-colors rounded-lg hover:bg-white dark:hover:bg-card-dark"
+              title="Refresh suggestions"
+            >
+              <FiRefreshCw className="w-4 h-4" />
+            </button>
+          </div>
           <div className="space-y-2">
             {suggestions.slice(0, 3).map((suggestion) => (
               <button

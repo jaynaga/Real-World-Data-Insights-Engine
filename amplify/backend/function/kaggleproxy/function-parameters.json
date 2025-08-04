@@ -1,0 +1,16 @@
+{
+  "functionName": "kaggleproxy",
+  "resourceName": "kaggleproxy",
+  "service": "Lambda",
+  "build": true,
+  "providerPlugin": "awscloudformation",
+  "dependsOn": [],
+  "environmentMap": {
+    "KAGGLE_USERNAME": {
+      "Ref": "functionkaggleproxyKAGGLEUSERNAME"
+    },
+    "KAGGLE_KEY": {
+      "Ref": "functionkaggleproxyKAGGLEKEY"
+    }
+  }
+}

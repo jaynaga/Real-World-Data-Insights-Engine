@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { FiBell, FiSettings, FiLogOut, FiUploadCloud } from 'react-icons/fi';
 import { FaUserCircle } from 'react-icons/fa';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
+import { useNotifications } from '../context/NotificationContext';
+import NotificationModal from './NotificationModal';
 
 function NavLink({ to, children }) {
   const location = useLocation();
@@ -25,8 +28,12 @@ function NavLink({ to, children }) {
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const { settings } = useSettings();
+  const { unreadCount } = useNotifications();
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notificationButtonRef = useRef(null);
 
   const handleLogout = async () => {
     try {
@@ -53,16 +60,29 @@ export default function Navbar() {
 
       {/* Center: Navigation Links */}
       <nav className="hidden md:flex space-x-6 text-sm font-medium">
-        <NavLink to="/">Dashboard</NavLink>
+        <NavLink to="/">Home</NavLink>
         <NavLink to="/explore">Explore</NavLink>
         <NavLink to="/projects">Projects</NavLink>
       </nav>
 
       {/* Right: Icons */}
       <div className="flex items-center space-x-4">
-        <NavLink to="/notifications">
-          <FiBell className="w-5 h-5" />
-        </NavLink>
+        {/* Notifications */}
+        <div className="relative">
+          <button
+            ref={notificationButtonRef}
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="relative p-1 text-gray-600 dark:text-gray-300 hover:text-accent-light dark:hover:text-accent-dark transition-colors"
+          >
+            <FiBell className="w-5 h-5" />
+            {/* Dynamic notification badge */}
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+        </div>
         
         {/* User menu */}
         <div className="relative">
@@ -72,7 +92,7 @@ export default function Navbar() {
           >
             <FaUserCircle className="w-6 h-6 text-gray-600 dark:text-gray-300 group-hover:text-accent-light dark:group-hover:text-accent-dark transition-colors" />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-200 group-hover:text-accent-light dark:group-hover:text-accent-dark transition-colors">
-              {user?.name || 'User'}
+              {settings?.profile?.firstName || user?.attributes?.given_name || user?.attributes?.name?.split(' ')[0] || user?.username || 'User'}
             </span>
           </button>
 
@@ -105,6 +125,13 @@ export default function Navbar() {
           )}
         </div>
       </div>
+
+      {/* Notification Modal */}
+      <NotificationModal
+        isOpen={showNotifications}
+        onClose={() => setShowNotifications(false)}
+        triggerRef={notificationButtonRef}
+      />
     </header>
   );
 }

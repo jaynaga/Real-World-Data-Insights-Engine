@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { getFairScore } from '../utils/fairScoreUtils';
 import { listDatasets, getDatasetContent } from '../utils/storageUtils';
 import { Storage } from 'aws-amplify';
+import FairScoreDisplay from './FairScoreDisplay';
 
 export default function DatasetList() {
   const [datasets, setDatasets] = useState([]);
@@ -9,7 +9,6 @@ export default function DatasetList() {
   const [error, setError] = useState(null);
   const [selectedDataset, setSelectedDataset] = useState(null);
   const [previewData, setPreviewData] = useState(null);
-  const [fairScore, setFairScore] = useState(null);
 
   useEffect(() => {
     loadDatasets();
@@ -48,7 +47,6 @@ export default function DatasetList() {
   const loadPreview = async (dataset) => {
     try {
       setSelectedDataset(dataset);
-      setFairScore(null);
 
       const content = await getDatasetContent(dataset.key);
       const rows = content.split('\n');
@@ -62,9 +60,6 @@ export default function DatasetList() {
       });
 
       setPreviewData({ headers, rows: previewRows });
-
-      const fairScoreData = await getFairScore(dataset.key);
-      setFairScore(fairScoreData);
     } catch (err) {
       console.error('Error loading preview:', err);
       setError('Failed to load dataset preview');
@@ -114,45 +109,43 @@ export default function DatasetList() {
   return (
     <div className="p-4">
       <h2 className="text-xl font-bold mb-4">Available Datasets</h2>
-      <div className="space-y-2">
+      <div className="space-y-3">
         {datasets.map((dataset) => (
           <div
             key={dataset.id}
-            className="p-3 border rounded hover:bg-gray-50 cursor-pointer"
+            className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
             onClick={() => loadPreview(dataset)}
           >
-            <h4 className="font-medium">{dataset.name}</h4>
-            <p className="text-sm text-gray-500">
-              Size: {(dataset.size / 1024 / 1024).toFixed(2)} MB
-            </p>
-            <p className="text-sm text-gray-500">
-              Last modified:{" "}
-              {new Date(dataset.lastModified).toLocaleDateString()}
-            </p>
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h4 className="font-medium text-lg mb-1">{dataset.name}</h4>
+                <p className="text-sm text-gray-500 mb-1">
+                  Size: {(dataset.size / 1024 / 1024).toFixed(2)} MB
+                </p>
+                <p className="text-sm text-gray-500">
+                  Last modified: {new Date(dataset.lastModified).toLocaleDateString()}
+                </p>
+              </div>
+              <div className="ml-4 flex-shrink-0">
+                <FairScoreDisplay datasetKey={dataset.key} compact={true} />
+              </div>
+            </div>
           </div>
         ))}
       </div>
 
       {selectedDataset && previewData && (
         <div className="border rounded-lg p-4 mt-6">
-          <h3 className="text-lg font-semibold mb-2">
+          <h3 className="text-lg font-semibold mb-4">
             Preview: {selectedDataset.name}
           </h3>
-          {fairScore ? (
-            <div className="mb-4 p-2 bg-blue-50 border-l-4 border-blue-400">
-              <div className="font-semibold text-blue-700">
-                FAIR Score: {fairScore.fair_score.fair_percentage}%
-              </div>
-              <div className="text-xs text-blue-600">
-                Total: {fairScore.fair_score.total_score} /{" "}
-                {fairScore.fair_score.total_possible}
-              </div>
-            </div>
-          ) : (
-            <div className="mb-4 text-xs text-gray-400">
-              FAIR score not available.
-            </div>
-          )}
+          
+          {/* FAIR Score Section */}
+          <div className="mb-6">
+            <FairScoreDisplay datasetKey={selectedDataset.key} compact={false} />
+          </div>
+
+          {/* Data Preview Table */}
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead>

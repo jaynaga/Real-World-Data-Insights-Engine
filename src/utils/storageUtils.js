@@ -1,6 +1,5 @@
 import { Storage } from 'aws-amplify';
 import Papa from 'papaparse';
-import externalDatasetIntegrationService from '../services/externalDatasetIntegrationService';
 
 // Fetch dataset file content from S3
 export const getDatasetFile = async (datasetId) => {
@@ -136,6 +135,102 @@ export const listFiles = async (path = 'user-uploads/') => {
   }
 };
 
+// List all data files within a specific dataset folder
+export const listDatasetFiles = async (datasetPath) => {
+  console.log('🔍 Listing files for dataset path:', datasetPath);
+  
+  try {
+    const possibleFolderPaths = [
+      datasetPath, // Direct path
+      `user-uploads/raw/${datasetPath}`, // Prefixed path
+      `raw/${datasetPath}` // Alternative prefix
+    ];
+
+    for (const folderPath of possibleFolderPaths) {
+      try {
+        console.log('🔍 Checking folder path:', folderPath);
+        
+        // List files in the dataset folder
+        const files = await Storage.list(folderPath + '/', { 
+          level: 'protected',
+          pageSize: 100
+        });
+        
+        console.log('📁 Raw files found:', files.map(f => f.key));
+        
+        // Filter for data files (exclude metadata folder and look for CSV/data files)
+        const dataFiles = files.filter(file => 
+          !file.key.includes('/metadata/') && // Exclude metadata files
+          !file.key.endsWith('/') && // Exclude folder entries
+          (file.key.endsWith('.csv') || file.key.endsWith('.json') || file.key.endsWith('.txt'))
+        );
+        
+        if (dataFiles.length > 0) {
+          // Process and return file information
+          const processedFiles = dataFiles.map(file => ({
+            key: file.key,
+            name: file.key.split('/').pop(),
+            size: file.size,
+            lastModified: file.lastModified,
+            type: file.key.split('.').pop().toLowerCase(),
+            path: file.key
+          }));
+          
+          console.log('✅ Found data files:', processedFiles);
+          return processedFiles;
+        }
+      } catch (error) {
+        console.log(`⚠️ Could not access folder path: ${folderPath}`, error.message);
+      }
+    }
+    
+    console.log('❌ No data files found in any folder path');
+    return [];
+  } catch (error) {
+    console.error('❌ Error listing dataset files:', error);
+    return [];
+  }
+};
+
+// Get content from a specific file within a dataset
+export const getDatasetFileContent = async (filePath) => {
+  console.log('🔍 Fetching content for file:', filePath);
+  
+  try {
+    const result = await Storage.get(filePath, { 
+      level: 'protected',
+      download: true 
+    });
+    console.log('✅ Successfully fetched file content');
+    return result;
+  } catch (error) {
+    console.error('❌ Error fetching file content:', error);
+    throw error;
+  }
+};
+
+// Helper function to load dataset metadata from dataset-info.json
+const loadDatasetMetadata = async (datasetPath) => {
+  try {
+    const metadataKey = `${datasetPath}/dataset-info.json`;
+    console.log(`Attempting to load metadata from: ${metadataKey}`);
+    
+    const metadataFile = await Storage.get(metadataKey, {
+      level: 'protected',
+      download: true
+    });
+    
+    const metadataText = await metadataFile.Body.text();
+    const metadata = JSON.parse(metadataText);
+    console.log(`Loaded metadata for ${datasetPath}:`, metadata);
+    
+    return metadata;
+  } catch (error) {
+    console.log(`No metadata found for ${datasetPath}:`, error.message);
+    return null;
+  }
+};
+
 // List all datasets from both raw folder (Synthea datasets) and user uploads
 export const listDatasets = async () => {
   try {
@@ -175,6 +270,7 @@ export const listDatasets = async () => {
           });
 
           console.log(`${approach.name} - Raw response:`, files);
+          console.log(`${approach.name} - Dataset keys found:`, files.map(f => f.key));
 
           // Extract unique folder paths from raw directory
           const rawFiles = files.filter(file => {
@@ -225,48 +321,79 @@ export const listDatasets = async () => {
             if (folderMap.size > 0) {
               console.log(`SUCCESS with ${approach.name}! Found ${folderMap.size} dataset folders:`, Array.from(folderMap.keys()));
 
-              const processedDatasets = Array.from(folderMap.entries()).map(([folderPath, folderData]) => {
-                const folderName = folderPath.split('/')[1]; // Extract folder name from raw/folderName
+              const processedDatasets = await Promise.all(
+                Array.from(folderMap.entries()).map(async ([folderPath, folderData]) => {
+                  const folderName = folderPath.split('/')[1]; // Extract folder name from raw/folderName
 
-                // Try to determine if this is a Synthea dataset or user-uploaded dataset
-                const isUserUpload = folderName.includes('-') && /\d{13}$/.test(folderName); // Check for timestamp pattern
-                const displayName = isUserUpload
-                  ? folderName.replace(/-\d{13}$/, '').replace(/-/g, ' ') // Remove timestamp and clean up
-                  : folderName;
+                  // Try to determine if this is a Synthea dataset or user-uploaded dataset
+                  const isUserUpload = folderName.includes('-') && /\d{13}$/.test(folderName); // Check for timestamp pattern
+                  const displayName = isUserUpload
+                    ? folderName.replace(/-\d{13}$/, '').replace(/-/g, ' ') // Remove timestamp and clean up
+                    : folderName;
 
-                // Separate data files from metadata files
-                const allFiles = folderData.files.map(f => ({
-                  name: f.key.split('/').pop(),
-                  key: f.key,
-                  size: f.size,
-                  lastModified: f.lastModified,
-                  isMetadata: f.key.includes('/metadata/')
-                }));
+                  // Load dataset metadata if available
+                  const metadata = await loadDatasetMetadata(folderPath);
 
-                const dataFiles = allFiles.filter(f => !f.isMetadata);
-                const metadataFiles = allFiles.filter(f => f.isMetadata);
+                  // Separate data files from metadata files
+                  const allFiles = folderData.files.map(f => ({
+                    name: f.key.split('/').pop(),
+                    key: f.key,
+                    size: f.size,
+                    lastModified: f.lastModified,
+                    isMetadata: f.key.includes('/metadata/') || f.key.endsWith('/dataset-info.json')
+                  }));
 
-                return {
-                  id: folderPath,
-                  name: displayName,
-                  key: folderPath,
-                  size: folderData.totalSize,
-                  lastModified: folderData.lastModified,
-                  format: 'folder',
-                  path: folderPath,
-                  accessLevel: approach.config.level,
-                  source: isUserUpload ? 'User Dataset' : 'Synthea Dataset',
-                  fileCount: folderData.files.length,
-                  dataFileCount: dataFiles.length,
-                  metadataFileCount: metadataFiles.length,
-                  files: dataFiles, // Default files list contains only data files
-                  dataFiles: dataFiles,
-                  metadataFiles: metadataFiles,
-                  allFiles: allFiles
-                };
-              });
+                  const dataFiles = allFiles.filter(f => !f.isMetadata);
+                  const metadataFiles = allFiles.filter(f => f.isMetadata);
 
-              console.log('Processed dataset folders:', processedDatasets);
+                  // Generate a user-friendly ID
+                  const generateDatasetId = (folderPath, displayName, isUserUpload) => {
+                    const folderName = folderPath.split('/').pop();
+                    
+                    // Special cases for known datasets
+                    if (folderName.toLowerCase() === 'synthea' || displayName.toLowerCase().includes('synthea')) {
+                      return 'dataset-1';
+                    }
+                    
+                    // For user uploads, create a safe ID from the display name
+                    if (isUserUpload) {
+                      return `dataset-${displayName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')}`;
+                    }
+                    
+                    // For other datasets, use folder name based ID
+                    return `dataset-${folderName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')}`;
+                  };
+
+                  return {
+                    id: generateDatasetId(folderPath, displayName, isUserUpload),
+                    name: metadata?.name || displayName, // Use metadata name if available
+                    description: metadata?.description || `${displayName} dataset with ${dataFiles.length} files`, // Use metadata description or generate one
+                    tags: metadata?.tags || [], // Use tags from dataset-info.json
+                    type: metadata?.type || (isUserUpload ? 'User Dataset' : 'Synthea Dataset'), // Use type from metadata or fallback
+                    key: folderPath,
+                    size: folderData.totalSize,
+                    lastModified: folderData.lastModified,
+                    format: 'folder',
+                    path: folderPath,
+                    accessLevel: approach.config.level,
+                    source: metadata?.type || (isUserUpload ? 'User Dataset' : 'Synthea Dataset'), // Use type from metadata or fallback
+                    fileCount: folderData.files.length,
+                    dataFileCount: dataFiles.length,
+                    metadataFileCount: metadataFiles.length,
+                    files: dataFiles, // Default files list contains only data files
+                    dataFiles: dataFiles,
+                    metadataFiles: metadataFiles,
+                    allFiles: allFiles,
+                    // Include user metadata if available
+                    metadata: metadata,
+                    userTags: metadata?.tags || [], // Keep for backward compatibility
+                    userDescription: metadata?.description || null,
+                    userType: metadata?.type || null,
+                    userGeography: metadata?.geography || null,
+                    userDemographics: metadata?.demographics || []
+                  };
+                })
+              );              console.log('Processed dataset folders:', processedDatasets);
               allDatasets.push(...processedDatasets);
               break; // Found datasets, no need to try other approaches
             }
@@ -335,46 +462,61 @@ export const listDatasets = async () => {
         if (userFolderMap.size > 0) {
           console.log(`Found ${userFolderMap.size} user dataset folders in user-uploads/raw/:`, Array.from(userFolderMap.keys()));
 
-          const userProcessedDatasets = Array.from(userFolderMap.entries()).map(([folderPath, folderData]) => {
-            const folderName = folderPath.split('/')[2]; // Extract folder name from user-uploads/raw/folderName
+          const userProcessedDatasets = await Promise.all(
+            Array.from(userFolderMap.entries()).map(async ([folderPath, folderData]) => {
+              const folderName = folderPath.split('/')[2]; // Extract folder name from user-uploads/raw/folderName
 
-            // Clean up the display name (remove timestamp if present)
-            const isTimestamped = folderName.includes('-') && /\d{13}$/.test(folderName);
-            const displayName = isTimestamped
-              ? folderName.replace(/-\d{13}$/, '').replace(/-/g, ' ') // Remove timestamp and clean up
-              : folderName;
+              // Clean up the display name (remove timestamp if present)
+              const isTimestamped = folderName.includes('-') && /\d{13}$/.test(folderName);
+              const displayName = isTimestamped
+                ? folderName.replace(/-\d{13}$/, '').replace(/-/g, ' ') // Remove timestamp and clean up
+                : folderName;
 
-            // Separate data files from metadata files
-            const allFiles = folderData.files.map(f => ({
-              name: f.key.split('/').pop(),
-              key: f.key,
-              size: f.size,
-              lastModified: f.lastModified,
-              isMetadata: f.key.includes('/metadata/')
-            }));
+              // Load dataset metadata if available
+              const metadata = await loadDatasetMetadata(folderPath);
 
-            const dataFiles = allFiles.filter(f => !f.isMetadata);
-            const metadataFiles = allFiles.filter(f => f.isMetadata);
+              // Separate data files from metadata files
+              const allFiles = folderData.files.map(f => ({
+                name: f.key.split('/').pop(),
+                key: f.key,
+                size: f.size,
+                lastModified: f.lastModified,
+                isMetadata: f.key.includes('/metadata/') || f.key.endsWith('/dataset-info.json')
+              }));
 
-            return {
-              id: folderPath,
-              name: displayName,
-              key: folderPath,
-              size: folderData.totalSize,
-              lastModified: folderData.lastModified,
-              format: 'folder',
-              path: folderPath,
-              accessLevel: 'protected',
-              source: 'User Dataset',
-              fileCount: folderData.files.length,
-              dataFileCount: dataFiles.length,
-              metadataFileCount: metadataFiles.length,
-              files: dataFiles, // Default files list contains only data files
-              dataFiles: dataFiles,
-              metadataFiles: metadataFiles,
-              allFiles: allFiles
-            };
-          });
+              const dataFiles = allFiles.filter(f => !f.isMetadata);
+              const metadataFiles = allFiles.filter(f => f.isMetadata);
+
+              return {
+                id: folderPath,
+                name: metadata?.name || displayName, // Use metadata name if available
+                description: metadata?.description || `${displayName} dataset with ${dataFiles.length} files`, // Use metadata description or generate one
+                tags: metadata?.tags || [], // Use tags from dataset-info.json
+                type: metadata?.type || 'User Dataset', // Use type from metadata or fallback
+                key: folderPath,
+                size: folderData.totalSize,
+                lastModified: folderData.lastModified,
+                format: 'folder',
+                path: folderPath,
+                accessLevel: 'protected',
+                source: metadata?.type || 'User Dataset', // Use type from metadata or fallback
+                fileCount: folderData.files.length,
+                dataFileCount: dataFiles.length,
+                metadataFileCount: metadataFiles.length,
+                files: dataFiles, // Default files list contains only data files
+                dataFiles: dataFiles,
+                metadataFiles: metadataFiles,
+                allFiles: allFiles,
+                // Include user metadata if available
+                metadata: metadata,
+                userTags: metadata?.tags || [], // Keep for backward compatibility
+                userDescription: metadata?.description || null,
+                userType: metadata?.type || null,
+                userGeography: metadata?.geography || null,
+                userDemographics: metadata?.demographics || []
+              };
+            })
+          );
 
           console.log('Processed user dataset folders:', userProcessedDatasets);
           allDatasets.push(...userProcessedDatasets);
@@ -385,19 +527,15 @@ export const listDatasets = async () => {
       // Continue even if user datasets fail
     }
 
-    // Third, load external datasets and integrate them
-    console.log('Loading external datasets...');
-    try {
-      const externalDatasets = await externalDatasetIntegrationService.loadExternalDatasets();
-      console.log(`Found ${externalDatasets.length} external datasets`);
-      allDatasets.push(...externalDatasets);
-    } catch (error) {
-      console.error('Error loading external datasets:', error);
-      // Continue even if external datasets fail
-    }
-
     console.log(`Total datasets found: ${allDatasets.length}`);
-    return allDatasets;
+    
+    // Assign index-based IDs to match explore page logic
+    const datasetsWithIndexIDs = allDatasets.map((dataset, index) => ({
+      ...dataset,
+      id: `dataset-${index + 1}`
+    }));
+    
+    return datasetsWithIndexIDs;
 
   } catch (error) {
     console.error('Error listing datasets:', {
@@ -470,46 +608,74 @@ export const listUserDatasets = async () => {
         if (folderMap.size > 0) {
           console.log(`Found ${folderMap.size} user dataset folders:`, Array.from(folderMap.keys()));
 
-          const processedDatasets = Array.from(folderMap.entries()).map(([folderPath, folderData]) => {
-            const folderName = folderPath.split('/')[2]; // Extract folder name from user-uploads/raw/folderName
+          const processedDatasets = await Promise.all(
+            Array.from(folderMap.entries()).map(async ([folderPath, folderData]) => {
+              const folderName = folderPath.split('/')[2]; // Extract folder name from user-uploads/raw/folderName
 
-            // Clean up the display name (remove timestamp if present)
-            const isTimestamped = folderName.includes('-') && /\d{13}$/.test(folderName);
-            const displayName = isTimestamped
-              ? folderName.replace(/-\d{13}$/, '').replace(/-/g, ' ') // Remove timestamp and clean up
-              : folderName;
+              // Clean up the display name (remove timestamp if present)
+              const isTimestamped = folderName.includes('-') && /\d{13}$/.test(folderName);
+              const displayName = isTimestamped
+                ? folderName.replace(/-\d{13}$/, '').replace(/-/g, ' ') // Remove timestamp and clean up
+                : folderName;
 
-            // Separate data files from metadata files
-            const allFiles = folderData.files.map(f => ({
-              name: f.key.split('/').pop(),
-              key: f.key,
-              size: f.size,
-              lastModified: f.lastModified,
-              isMetadata: f.key.includes('/metadata/')
-            }));
+              // Load dataset metadata if available
+              const metadata = await loadDatasetMetadata(folderPath);
 
-            const dataFiles = allFiles.filter(f => !f.isMetadata);
-            const metadataFiles = allFiles.filter(f => f.isMetadata);
+              // Separate data files from metadata files
+              const allFiles = folderData.files.map(f => ({
+                name: f.key.split('/').pop(),
+                key: f.key,
+                size: f.size,
+                lastModified: f.lastModified,
+                isMetadata: f.key.includes('/metadata/')
+              }));
 
-            return {
-              id: folderName, // Use just the folder name as ID instead of full path
-              name: displayName,
-              key: folderPath,
-              size: folderData.totalSize,
-              lastModified: folderData.lastModified,
-              format: 'folder',
-              path: folderPath,
-              accessLevel: 'protected',
-              source: 'User Dataset',
-              fileCount: folderData.files.length,
-              dataFileCount: dataFiles.length,
-              metadataFileCount: metadataFiles.length,
-              files: dataFiles, // Default files list contains only data files
-              dataFiles: dataFiles,
-              metadataFiles: metadataFiles,
-              allFiles: allFiles
-            };
-          });
+              const dataFiles = allFiles.filter(f => !f.isMetadata);
+              const metadataFiles = allFiles.filter(f => f.isMetadata);
+
+              // Generate a user-friendly ID
+              const generateDatasetId = (folderPath, displayName) => {
+                const folderName = folderPath.split('/').pop();
+                
+                // Special cases for known datasets
+                if (folderName.toLowerCase() === 'synthea' || displayName.toLowerCase().includes('synthea')) {
+                  return 'dataset-1';
+                }
+                
+                // For user uploads, create a safe ID from the display name
+                return `dataset-${displayName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')}`;
+              };
+
+              return {
+                id: generateDatasetId(folderPath, displayName),
+                name: metadata?.name || displayName, // Use metadata name if available
+                description: metadata?.description || `${displayName} dataset with ${dataFiles.length} files`, // Use metadata description or generate one
+                tags: metadata?.tags || [], // Use tags from dataset-info.json
+                type: metadata?.type || 'User Dataset', // Use type from metadata or fallback
+                key: folderPath,
+                size: folderData.totalSize,
+                lastModified: folderData.lastModified,
+                format: 'folder',
+                path: folderPath,
+                accessLevel: 'protected',
+                source: metadata?.type || 'User Dataset', // Use type from metadata or fallback
+                fileCount: folderData.files.length,
+                dataFileCount: dataFiles.length,
+                metadataFileCount: metadataFiles.length,
+                files: dataFiles, // Default files list contains only data files
+                dataFiles: dataFiles,
+                metadataFiles: metadataFiles,
+                allFiles: allFiles,
+                // Include user metadata if available
+                metadata: metadata,
+                userTags: metadata?.tags || [], // Keep for backward compatibility
+                userDescription: metadata?.description || null,
+                userType: metadata?.type || null,
+                userGeography: metadata?.geography || null,
+                userDemographics: metadata?.demographics || []
+              };
+            })
+          );
 
           userDatasets.push(...processedDatasets);
         }
@@ -580,13 +746,16 @@ export const listUserDatasets = async () => {
             return {
               id: `user-session-${latestFile.lastModified.getTime()}-${index}`,
               name: sessionName,
+              description: `User upload session with ${sessionFiles.length} files`, // Generated description
+              tags: [], // No tags for session uploads
+              type: 'User Upload Session', // Type for session uploads
               key: `user-uploads-session-${index}`,
               size: totalSize,
               lastModified: latestFile.lastModified,
               format: 'session',
               path: 'user-uploads/',
               accessLevel: 'protected',
-              source: 'User Upload',
+              source: 'User Upload Session', // Source for session uploads
               fileCount: sessionFiles.length,
               files: sessionFiles.map(file => ({
                 name: file.key.split('/').pop(),
@@ -608,7 +777,14 @@ export const listUserDatasets = async () => {
     }
 
     console.log(`Total user datasets found: ${userDatasets.length}`);
-    return userDatasets;
+    
+    // Assign index-based IDs to match explore page logic
+    const datasetsWithIndexIDs = userDatasets.map((dataset, index) => ({
+      ...dataset,
+      id: `dataset-${index + 1}`
+    }));
+    
+    return datasetsWithIndexIDs;
 
   } catch (error) {
     console.error('Error listing user datasets:', {
@@ -781,36 +957,14 @@ export const loadCsvDataset = async (key, accessLevel = 'protected') => {
   try {
     console.log(`Loading CSV dataset: ${key} with access level: ${accessLevel}`);
 
-    let csvContent;
+    // Download the file from S3
+    const result = await Storage.get(key, {
+      level: accessLevel,
+      download: true
+    });
 
-    // Check if this is an external dataset
-    if (key.startsWith('external://')) {
-      // Extract connection and file info from external key format: external://connectionId/fileId
-      const keyParts = key.replace('external://', '').split('/');
-      const connectionId = keyParts[0];
-      const fileId = keyParts.slice(1).join('/');
-      
-      console.log(`Loading external dataset - Connection: ${connectionId}, File: ${fileId}`);
-      
-      // Find the dataset document to get proper metadata
-      const externalDatasets = await externalDatasetIntegrationService.loadExternalDatasets();
-      const dataset = externalDatasets.find(d => d.external?.connectionId === connectionId && d.external?.externalFileId === fileId);
-      
-      if (!dataset) {
-        throw new Error('External dataset not found or connection unavailable');
-      }
-      
-      // Get content from external storage
-      const externalContent = await externalDatasetIntegrationService.getExternalDatasetContent(dataset);
-      csvContent = externalContent.content;
-    } else {
-      // Standard internal dataset - download from S3
-      const result = await Storage.get(key, {
-        level: accessLevel,
-        download: true
-      });
-      csvContent = await result.Body.text();
-    }
+    // Convert to text
+    const csvContent = await result.Body.text();
 
     // Parse with PapaParse
     return new Promise((resolve, reject) => {
@@ -830,8 +984,7 @@ export const loadCsvDataset = async (key, accessLevel = 'protected') => {
             meta: results.meta,
             rowCount: results.data.length,
             columns: results.meta.fields,
-            fileName: key.split('/').pop(),
-            isExternal: key.startsWith('external://')
+            fileName: key.split('/').pop()
           });
         },
         error: reject

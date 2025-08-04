@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { FiFilter, FiSearch } from 'react-icons/fi';
-import { HiOutlineSortAscending } from 'react-icons/hi';
+import { FaRobot } from 'react-icons/fa';
 
 import DatasetTable from './DatasetTable';
 import ExploreSidebar from './ExploreSidebar';
@@ -13,7 +13,6 @@ export default function DatasetExplorerPage() {
   const [filters, setFilters] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [sortMenuAnchor, setSortMenuAnchor] = useState(false);
   const [sortConfig, setSortConfig] = useState({
     field: 'lastUpdated',
     direction: 'desc'
@@ -37,6 +36,88 @@ export default function DatasetExplorerPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  // Generate dynamic tags based on dataset content and file types
+  const generateDatasetTags = (dataset) => {
+    const tags = [];
+    
+    // First, use user-provided tags if available
+    if (dataset.userTags && dataset.userTags.length > 0) {
+      tags.push(...dataset.userTags);
+    }
+    
+    // Add tags based on file types
+    const fileExtensions = dataset.files?.map(file => 
+      file.key ? file.key.split('.').pop()?.toLowerCase() : ''
+    ).filter(ext => ext) || [];
+    
+    const uniqueExtensions = [...new Set(fileExtensions)];
+    
+    // Map file extensions to meaningful tags
+    const extensionTagMap = {
+      'csv': 'CSV Data',
+      'json': 'JSON Data',
+      'xlsx': 'Excel Data',
+      'xls': 'Excel Data',
+      'txt': 'Text Data',
+      'pdf': 'Documentation',
+      'md': 'Documentation',
+      'png': 'Images',
+      'jpg': 'Images',
+      'jpeg': 'Images',
+      'parquet': 'Big Data',
+      'zip': 'Compressed',
+      'tar': 'Archive'
+    };
+    
+    uniqueExtensions.forEach(ext => {
+      if (extensionTagMap[ext]) {
+        tags.push(extensionTagMap[ext]);
+      }
+    });
+    
+    // Add tags based on dataset name patterns (only if no user tags)
+    if (!dataset.userTags || dataset.userTags.length === 0) {
+      const namePattern = dataset.name.toLowerCase();
+      if (namePattern.includes('hospital') || namePattern.includes('patient') || namePattern.includes('medical')) {
+        tags.push('Healthcare');
+      }
+      if (namePattern.includes('synthea') || namePattern.includes('synthetic')) {
+        tags.push('Synthetic Data');
+      }
+      if (namePattern.includes('covid') || namePattern.includes('pandemic')) {
+        tags.push('Public Health');
+      }
+      if (namePattern.includes('census') || namePattern.includes('demographic')) {
+        tags.push('Demographics');
+      }
+      if (namePattern.includes('finance') || namePattern.includes('economic')) {
+        tags.push('Financial');
+      }
+    }
+    
+    // Add size-based tags
+    if (dataset.size > 100 * 1024 * 1024) { // > 100MB
+      tags.push('Large Dataset');
+    } else if (dataset.size < 1024 * 1024) { // < 1MB
+      tags.push('Small Dataset');
+    }
+    
+    // Add file count based tags
+    if (dataset.fileCount > 10) {
+      tags.push('Multi-file');
+    } else if (dataset.fileCount === 1) {
+      tags.push('Single File');
+    }
+    
+    // Always add dataset tag if no other tags exist
+    if (tags.length === 0) {
+      tags.push('Dataset');
+    }
+    
+    // Remove duplicates and return
+    return [...new Set(tags)];
+  };
+
   const loadDatasets = async () => {
     try {
       setLoading(true);
@@ -56,19 +137,21 @@ export default function DatasetExplorerPage() {
       const transformedDatasets = rawDatasets.map((dataset, index) => ({
         id: `dataset-${index + 1}`, // Start from 1 now that we removed the test dataset
         name: dataset.name,
-        type: 'Healthcare Dataset',
+        type: dataset.userType || 'Healthcare Dataset', // Use user-provided type if available
         size: formatFileSize(dataset.size),
         records: `${dataset.fileCount} files`, // Show file count instead of record count
         lastUpdated: dataset.lastModified.toLocaleDateString(),
-        description: `Healthcare dataset folder containing ${dataset.fileCount} files: ${dataset.name}`,
-        tags: ['healthcare', 'folder', 'dataset'],
-        geography: 'Healthcare Data',
-        demographics: ['All Age Groups'],
+        description: dataset.userDescription || `Healthcare dataset folder containing ${dataset.fileCount} files: ${dataset.name}`,
+        tags: generateDatasetTags(dataset), // Use dynamic tags with user metadata
+        geography: dataset.userGeography || 'Healthcare Data', // Use user-provided geography if available
+        demographics: dataset.userDemographics?.length > 0 ? dataset.userDemographics : ['All Age Groups'],
         date: dataset.lastModified.toISOString().split('T')[0],
         key: dataset.key, // Store the S3 folder path for accessing the dataset
         accessLevel: dataset.accessLevel,
         fileCount: dataset.fileCount,
-        files: dataset.files // Store the list of files in this dataset folder
+        files: dataset.files, // Store the list of files in this dataset folder
+        // Pass through user metadata for potential future use
+        userMetadata: dataset.metadata
       }));
 
       setDatasets(transformedDatasets);
@@ -222,13 +305,6 @@ export default function DatasetExplorerPage() {
                     {Object.keys(filters).length}
                   </span>
                 )}
-              </button>
-              <button
-                onClick={(e) => setSortMenuAnchor(e.currentTarget)}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 border border-border-light dark:border-border-dark rounded-lg text-textPrimary-light dark:text-textPrimary-dark hover:bg-gray-50 dark:hover:bg-card-hover-dark text-sm"
-              >
-                <HiOutlineSortAscending />
-                Sort
               </button>
             </div>
           </div>

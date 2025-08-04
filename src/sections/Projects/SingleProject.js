@@ -1,16 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import AINotebookGenerator from '../../components/AINotebookGenerator';
 import AIDatasetAssistant from '../../components/AIDatasetAssistant';
-import { FaArrowLeft, FaShareAlt, FaDownload, FaChartBar, FaDatabase, FaEdit, FaTrash, FaFolder, FaFolderOpen, FaFile, FaEye, FaRobot } from 'react-icons/fa';
+import ProjectSharingModal from '../../components/ProjectSharingModal';
+import { FaArrowLeft, FaShareAlt, FaDownload, FaDatabase, FaEdit, FaTrash, FaFolder, FaFolderOpen, FaFile, FaEye, FaRobot } from 'react-icons/fa';
 import { HiOutlinePlusCircle } from 'react-icons/hi';
 import { MdOutlineDashboard } from 'react-icons/md';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getProject, updateProjectStatus, deleteProject, addDatasetToProject, removeDatasetFromProject } from '../../services/projectService';
+import { getProject, updateProject, updateProjectStatus, deleteProject, addDatasetToProject, removeDatasetFromProject } from '../../services/projectService';
 import { listDatasets, loadCsvDataset } from '../../utils/storageUtils';
 import { listFiles as listS3Files } from '../../utils/storageUtils';
 import { Storage } from 'aws-amplify';
+import { useNotifications } from '../../context/NotificationContext';
 
 export default function SingleProject() {
+  const { addNotification } = useNotifications();
   const [lastGeneratedNotebook, setLastGeneratedNotebook] = useState(null);
   // Handler for notebook generation completion
   const handleNotebookGenerated = (notebookJson) => {
@@ -29,6 +32,7 @@ export default function SingleProject() {
   const [projectDatasets, setProjectDatasets] = useState([]);
   const [projectNotebooks, setProjectNotebooks] = useState([]);
   const [isStatsExpanded, setIsStatsExpanded] = useState(true);
+  const [lastRefreshTime, setLastRefreshTime] = useState(null);
   
   // Dataset viewer state
   const [selectedDataset, setSelectedDataset] = useState(null);
@@ -47,6 +51,9 @@ export default function SingleProject() {
   // Edit modal state
   const [showEditModal, setShowEditModal] = useState(false);
   const [editDatasetSearchQuery, setEditDatasetSearchQuery] = useState('');
+  
+  // Sharing modal state
+  const [showSharingModal, setShowSharingModal] = useState(false);
 
   // AI Dataset Assistant state
   const [showAIAssistant, setShowAIAssistant] = useState(false);
@@ -86,10 +93,83 @@ export default function SingleProject() {
       }
 
       // Filter datasets that are part of this project
+      console.log('🔍 Project selectedDatasets:', projectData.selectedDatasets);
+      console.log('🔍 Available datasets count:', availableDatasets.length);
+      console.log('🔍 Available dataset IDs:', availableDatasets.map(d => d.id));
+      
       const projectDatasetList = availableDatasets.filter(dataset =>
         projectData.selectedDatasets?.includes(dataset.id)
       );
+      console.log('🔍 Filtered project datasets:', projectDatasetList.map(d => ({ id: d.id, name: d.name })));
+      console.log('🔍 Missing datasets (in selectedDatasets but not in available):', 
+        projectData.selectedDatasets?.filter(id => 
+          !availableDatasets.some(dataset => dataset.id === id)
+        ) || []
+      );
+      
       setProjectDatasets(projectDatasetList);
+
+      // Clean up orphaned dataset IDs (datasets that no longer exist)
+      const orphanedDatasetIds = projectData.selectedDatasets?.filter(id => 
+        !availableDatasets.some(dataset => dataset.id === id)
+      ) || [];
+      
+      console.log('🔍 Orphaned dataset analysis:', {
+        totalSelectedDatasets: projectData.selectedDatasets?.length || 0,
+        totalAvailableDatasets: availableDatasets.length,
+        orphanedDatasetIds: orphanedDatasetIds,
+        orphanedCount: orphanedDatasetIds.length
+      });
+      
+      if (orphanedDatasetIds.length > 0) {
+        console.log('🧹 Found orphaned dataset IDs that need cleanup:', orphanedDatasetIds);
+        console.log('🧹 These datasets are in the project but no longer exist in the system');
+        
+        // Auto-clean up orphaned datasets
+        try {
+          const cleanedDatasets = projectData.selectedDatasets?.filter(id => 
+            availableDatasets.some(dataset => dataset.id === id)
+          ) || [];
+          
+          console.log('🧹 Cleanup operation:', {
+            originalCount: projectData.selectedDatasets?.length || 0,
+            cleanedCount: cleanedDatasets.length,
+            removedDatasets: orphanedDatasetIds,
+            remainingDatasets: cleanedDatasets
+          });
+          
+          if (cleanedDatasets.length !== projectData.selectedDatasets?.length) {
+            console.log('🧹 Auto-cleaning orphaned datasets...');
+            console.log('🧹 Updating project from', projectData.selectedDatasets?.length, 'to', cleanedDatasets.length, 'datasets');
+            
+            const updatedProject = await updateProject(id, { 
+              ...projectData,
+              selectedDatasets: cleanedDatasets 
+            });
+            setProject(updatedProject);
+            console.log('✅ Successfully cleaned up orphaned datasets');
+            console.log('✅ Updated project selectedDatasets:', updatedProject.selectedDatasets);
+            
+            // Add notification about the cleanup
+            addNotification({
+              type: 'info',
+              title: 'Project Data Cleaned',
+              message: `Removed ${orphanedDatasetIds.length} orphaned dataset reference(s) from "${projectData.title || 'your project'}"`
+            });
+            
+            // Also update the project dataset list to reflect the cleanup
+            const updatedProjectDatasetList = availableDatasets.filter(dataset =>
+              cleanedDatasets.includes(dataset.id)
+            );
+            setProjectDatasets(updatedProjectDatasetList);
+            console.log('✅ Updated project dataset list after cleanup:', updatedProjectDatasetList.map(d => ({ id: d.id, name: d.name })));
+          }
+        } catch (cleanupError) {
+          console.error('❌ Error cleaning up orphaned datasets:', cleanupError);
+        }
+      } else {
+        console.log('✅ No orphaned datasets found - all selected datasets exist');
+      }
 
     } catch (error) {
       console.error('Error loading project:', error);
@@ -106,8 +186,12 @@ export default function SingleProject() {
       setError(error.message);
     } finally {
       setLoading(false);
+      // Track when the project was last refreshed (for dashboard sync)
+      const refreshTime = Date.now();
+      setLastRefreshTime(refreshTime);
+      console.log('🔄 Project refreshed at:', new Date(refreshTime).toLocaleTimeString(), '- Dashboard will auto-update on next visit');
     }
-  }, [id]);
+  }, [id, addNotification]);
 
   // Add useEffect hooks after loadProject is declared
   useEffect(() => {
@@ -187,6 +271,9 @@ export default function SingleProject() {
       console.log('🔄 Adding dataset to project:', datasetId);
       console.log('📋 Current project datasets:', project?.selectedDatasets);
       
+      // Show loading state
+      setDatasetsLoading(true);
+      
       // Add the dataset to the project
       const updatedProject = await addDatasetToProject(id, datasetId);
       console.log('✅ Updated project datasets:', updatedProject?.selectedDatasets);
@@ -194,26 +281,57 @@ export default function SingleProject() {
       // Update the project state immediately
       setProject(updatedProject);
       
-      // Reload the project datasets with the updated project
+      // Reload fresh datasets from server instead of using cached data
       const allDatasets = await listDatasets();
+      console.log('📊 Reloaded datasets from server:', allDatasets.length);
+      
+      // Update project datasets with fresh data
       const projectDatasetList = allDatasets.filter(dataset =>
         updatedProject.selectedDatasets?.includes(dataset.id)
       );
-      console.log('📊 Setting project datasets:', projectDatasetList.map(d => d.id));
+      console.log('📊 Setting project datasets:', projectDatasetList.map(d => ({ id: d.id, name: d.name })));
       setProjectDatasets(projectDatasetList);
       
-      // Update available datasets (remove the one we just added)
-      const newAvailableDatasets = availableDatasets.filter(dataset => dataset.id !== datasetId);
+      // Update available datasets (exclude ones already in project)
+      const newAvailableDatasets = allDatasets.filter(dataset => 
+        !updatedProject.selectedDatasets?.includes(dataset.id)
+      );
+      console.log('📊 Setting available datasets:', newAvailableDatasets.map(d => ({ id: d.id, name: d.name })));
       setAvailableDatasets(newAvailableDatasets);
       
-      // Close the selector and reset search query
-      setShowDatasetSelector(false);
-      setDatasetSearchQuery('');
+      // Force a complete reload of the project to ensure everything is in sync
+      await loadProject();
       
-      console.log('✅ Successfully added dataset to project');
+      // Close the appropriate modal based on which one is open
+      if (showDatasetSelector) {
+        setShowDatasetSelector(false);
+        setDatasetSearchQuery('');
+      }
+      // Note: Don't close edit modal - let user add multiple datasets
+      if (showEditModal) {
+        setEditDatasetSearchQuery(''); // Clear search but keep modal open
+      }
+      
+      // Show success message
+      const datasetName = allDatasets.find(d => d.id === datasetId)?.name || datasetId;
+      
+      // Add notification to the notification center
+      addNotification({
+        type: 'success',
+        title: 'Dataset Added to Project',
+        message: `"${datasetName}" has been successfully added to "${project?.title || 'your project'}"`
+      });
+      
+      console.log('✅ Successfully added dataset to project and refreshed');
     } catch (error) {
       console.error('Error adding dataset to project:', error);
-      alert('Failed to add dataset to project. Please try again.');
+      addNotification({
+        type: 'error',
+        title: 'Failed to Add Dataset',
+        message: 'Could not add dataset to project. Please try again.'
+      });
+    } finally {
+      setDatasetsLoading(false);
     }
   };
 
@@ -223,6 +341,13 @@ export default function SingleProject() {
       console.log('🔄 Removing dataset from project:', datasetId);
       console.log('📋 Current project datasets:', project?.selectedDatasets);
       
+      // Show loading state
+      setDatasetsLoading(true);
+      
+      // Get dataset name before removing it
+      const datasetToRemove = projectDatasets.find(d => d.id === datasetId);
+      const datasetName = datasetToRemove?.name || datasetId;
+      
       // Remove the dataset from the project
       const updatedProject = await removeDatasetFromProject(id, datasetId);
       console.log('✅ Updated project datasets:', updatedProject?.selectedDatasets);
@@ -230,24 +355,44 @@ export default function SingleProject() {
       // Update the project state immediately
       setProject(updatedProject);
       
-      // Reload the project datasets with the updated project
+      // Reload fresh datasets from server
       const allDatasets = await listDatasets();
+      console.log('📊 Reloaded datasets from server:', allDatasets.length);
+      
+      // Update project datasets with fresh data
       const projectDatasetList = allDatasets.filter(dataset =>
         updatedProject.selectedDatasets?.includes(dataset.id)
       );
       console.log('📊 Setting project datasets:', projectDatasetList.map(d => d.id));
       setProjectDatasets(projectDatasetList);
       
-      // Update available datasets (add the one we just removed)
-      const removedDataset = allDatasets.find(dataset => dataset.id === datasetId);
-      if (removedDataset) {
-        setAvailableDatasets(prev => [...prev, removedDataset]);
-      }
+      // Update available datasets (exclude ones already in project)
+      const newAvailableDatasets = allDatasets.filter(dataset => 
+        !updatedProject.selectedDatasets?.includes(dataset.id)
+      );
+      console.log('📊 Setting available datasets:', newAvailableDatasets.length);
+      setAvailableDatasets(newAvailableDatasets);
       
-      console.log('✅ Successfully removed dataset from project');
+      // Force a complete reload of the project to ensure everything is in sync
+      await loadProject();
+      
+      // Show success message
+      addNotification({
+        type: 'info',
+        title: 'Dataset Removed from Project',
+        message: `"${datasetName}" has been successfully removed from "${project?.title || 'your project'}"`
+      });
+      
+      console.log('✅ Successfully removed dataset from project and refreshed');
     } catch (error) {
       console.error('Error removing dataset from project:', error);
-      alert('Failed to remove dataset from project. Please try again.');
+      addNotification({
+        type: 'error',
+        title: 'Failed to Remove Dataset',
+        message: 'Could not remove dataset from project. Please try again.'
+      });
+    } finally {
+      setDatasetsLoading(false);
     }
   };
 
@@ -258,7 +403,11 @@ export default function SingleProject() {
       navigate('/projects');
     } catch (error) {
       console.error('Error deleting project:', error);
-      alert('Failed to delete project. Please try again.');
+      addNotification({
+        type: 'error',
+        title: 'Failed to Delete Project',
+        message: 'Could not delete project. Please try again.'
+      });
     }
   };
 
@@ -653,8 +802,8 @@ export default function SingleProject() {
           </p>
           <p className="text-xs text-textSecondary-light dark:text-textSecondary-dark mb-4">
             Created {formatDate(project.createdAt)} · Last updated {formatDate(project.updatedAt)}
-            <span className={`ml-2 text-xs font-medium px-2 py-0.5 rounded ${getStatusColor(project.status || 'active')}`}>
-              {(project.status || 'active').charAt(0).toUpperCase() + (project.status || 'active').slice(1)}
+            <span className={`ml-2 text-xs font-medium px-2 py-0.5 rounded ${getStatusColor(project.status)}`}>
+              {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
             </span>
           </p>
         </div>
@@ -663,7 +812,7 @@ export default function SingleProject() {
           <button
             onClick={() => loadProject(0)}
             className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded flex items-center gap-1"
-            title="Refresh project data"
+            title="Refresh project data and update dashboard variables"
           >
             🔄 Refresh
           </button>
@@ -709,7 +858,11 @@ export default function SingleProject() {
             </div>
             <div className="flex flex-col items-center justify-center bg-white dark:bg-card-dark border border-default rounded-lg py-4">
               <div className="text-2xl mb-1">🧩</div>
-              <p className="text-xl font-semibold">{stats.dataSources}</p>
+              {datasetsLoading ? (
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+              ) : (
+                <p className="text-xl font-semibold">{stats.dataSources}</p>
+              )}
               <p className="text-sm text-textSecondary-light dark:text-textSecondary-dark">Data Sources</p>
             </div>
             <div className="flex flex-col items-center justify-center bg-white dark:bg-card-dark border border-default rounded-lg py-4">
@@ -721,7 +874,12 @@ export default function SingleProject() {
               onClick={(e) => {
                 e.stopPropagation();
                 if (project?.dashboardConfig) {
-                  navigate(`/projects/${id}/dashboard`, { state: { projectDatasets } });
+                  navigate(`/projects/${id}/dashboard`, { 
+                    state: { 
+                      projectDatasets,
+                      refreshTime: lastRefreshTime 
+                    } 
+                  });
                 }
               }}
               className={`flex flex-col items-center justify-center bg-white dark:bg-card-dark border border-default rounded-lg py-4 transition-colors ${
@@ -756,38 +914,24 @@ export default function SingleProject() {
           <FaRobot /> AI Dataset Assistant
         </button>
         <button
-          onClick={() => navigate(`/projects/${id}/visualize`, { state: { projectDatasets } })}
-          className="bg-purple-600 text-white px-4 py-2 text-sm rounded flex items-center gap-2 hover:bg-purple-700"
-        >
-          <FaChartBar /> Advanced Visualization
-        </button>
-        <button
-          onClick={() => navigate(`/projects/${id}/smart-viz`, { state: { projectDatasets } })}
-          className="bg-emerald-600 text-white px-4 py-2 text-sm rounded flex items-center gap-2 hover:bg-emerald-700"
-        >
-          🧠 Smart Visualization
-        </button>
-        <button
           className="bg-indigo-600 text-white px-4 py-2 text-sm rounded flex items-center gap-2"
           onClick={handleOpenNotebookModal}
         >
           <FaDatabase /> Generate Notebook
         </button>
         <div className="ml-auto flex gap-2">
-          <button className="btn-outline text-sm flex items-center gap-1">
-            <FaShareAlt /> Share
-          </button>
-          <button className="btn-outline text-sm flex items-center gap-1">
-            <FaDownload /> Export
-          </button>
-          <button
-            className="btn-outline text-sm flex items-center gap-1"
-            onClick={() => {
-              // ...existing code...
-            }}
-          >
-            🚀 Test Navigation
-          </button>
+          <div className="relative">
+            <button 
+              onClick={() => setShowSharingModal(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors font-medium"
+              title="Share Project (Coming Soon)"
+            >
+              <FaShareAlt /> Share Project
+            </button>
+            <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full text-[10px] font-medium">
+              Coming Soon
+            </span>
+          </div>
         </div>
       </div>
       {showNotebookModal && (
@@ -797,6 +941,7 @@ export default function SingleProject() {
           projectId={id}
           availableFiles={projectDatasets}
           onNotebookGenerated={handleNotebookGenerated}
+          refreshTrigger={lastRefreshTime}
         />
       )}
       {lastGeneratedNotebook && (
@@ -1144,7 +1289,11 @@ export default function SingleProject() {
                       const notebookJson = JSON.parse(text);
                       navigate(`/projects/${id}/notebook-ide`, { state: { notebookJson } });
                     } catch (err) {
-                      alert('Failed to load notebook for JupyterLite IDE.');
+                      addNotification({
+                        type: 'error',
+                        title: 'Failed to Load Notebook',
+                        message: 'Could not load notebook for JupyterLite IDE. Please try again.'
+                      });
                       console.error('Notebook fetch error:', err);
                     }
                   }}
@@ -1168,6 +1317,13 @@ export default function SingleProject() {
           currentProjectDatasets={projectDatasets}
         />
       )}
+
+      {/* Project Sharing Modal */}
+      <ProjectSharingModal
+        isOpen={showSharingModal}
+        onClose={() => setShowSharingModal(false)}
+        project={project}
+      />
 
       <DatasetViewer />
     </div>

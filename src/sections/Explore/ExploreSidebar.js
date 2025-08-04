@@ -109,6 +109,40 @@ export default function ExploreSidebar({ isOpen, onClose, filters = {}, setFilte
           </button>
         </div>
 
+        {/* Data Source Filter */}
+        <div className="mb-6">
+          <h3 className="text-sm font-medium text-textPrimary-light dark:text-textPrimary-dark mb-3">
+            Data Source
+          </h3>
+          <div className="space-y-2">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={!!filters.source?.['Local']}
+                onChange={() => handleFilterChange('source', 'Local')}
+                className="h-4 w-4 text-accent-light dark:text-accent-dark focus:ring-accent-light dark:focus:ring-accent-dark rounded"
+              />
+              <span className="ml-2 text-sm text-textPrimary-light dark:text-textPrimary-dark">
+                Local Datasets
+              </span>
+            </label>
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={!!filters.source?.['Kaggle']}
+                onChange={() => handleFilterChange('source', 'Kaggle')}
+                className="h-4 w-4 text-accent-light dark:text-accent-dark focus:ring-accent-light dark:focus:ring-accent-dark rounded"
+              />
+              <span className="ml-2 text-sm text-textPrimary-light dark:text-textPrimary-dark">
+                Kaggle Datasets
+                <span className="ml-1 px-1.5 py-0.5 text-xs rounded bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-100">
+                  Psychiatric
+                </span>
+              </span>
+            </label>
+          </div>
+        </div>
+
         {Object.entries(filterableFields).map(([key, { label, values }]) => (
           <div key={key} className="mb-6">
             <h3 className="text-sm font-medium text-textPrimary-light dark:text-textPrimary-dark mb-3">

@@ -1,0 +1,13 @@
+{
+  "name": "fair-scorer-nodejs",
+  "version": "1.0.0",
+  "description": "FAIR Score Calculator for Datasets - Node.js version",
+  "main": "fair_scorer_nodejs.js",
+  "dependencies": {
+    "aws-sdk": "^2.1490.0",
+    "uuid": "^9.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

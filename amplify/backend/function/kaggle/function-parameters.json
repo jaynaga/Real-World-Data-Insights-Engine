@@ -1,0 +1,7 @@
+{
+  "lambdaLayers": [],
+  "environmentVariables": {
+    "KAGGLE_USERNAME": "jaynagabhairu",
+    "KAGGLE_KEY": "00a008b33b78b06c22f12c36702a7348"
+  }
+}

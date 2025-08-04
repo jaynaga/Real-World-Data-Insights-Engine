@@ -13,9 +13,8 @@ import '../../styles/tokens.css';
 
 export default function DatasetExplorerPage() {
   const [filters, setFilters] = useState({});
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchText, setSearchText] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [sortMenuAnchor, setSortMenuAnchor] = useState(false);
   const [sortConfig, setSortConfig] = useState({
     field: 'lastUpdated',
     direction: 'desc'
@@ -24,12 +23,14 @@ export default function DatasetExplorerPage() {
   // Real dataset state that loads from S3
   const [datasets, setDatasets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   // AI Dataset Assistant state
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const handleOpenAIAssistant = () => setShowAIAssistant(true);
   const handleCloseAIAssistant = () => setShowAIAssistant(false);
+
+  // Stable search handler to prevent input focus issues
+
 
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
@@ -42,7 +43,6 @@ export default function DatasetExplorerPage() {
   const loadDatasets = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
       console.log('Loading datasets from S3...');
 
       const rawDatasets = await listDatasets();
@@ -56,16 +56,16 @@ export default function DatasetExplorerPage() {
 
       // Transform the data to match the expected format for the explore page
       const transformedDatasets = rawDatasets.map((dataset, index) => ({
-        id: `dataset-${index + 1}`, // Start from 1 now that we removed the test dataset
+        id: dataset.id || `dataset-${index + 1}`, // Use the ID from storageUtils or fallback to index
         name: dataset.name,
-        type: 'Healthcare Dataset',
+        type: dataset.type || dataset.source || 'Dataset', // Use the type from metadata, fallback to source, then 'Dataset'
         size: formatFileSize(dataset.size),
         records: `${dataset.fileCount} files`, // Show file count instead of record count
         lastUpdated: dataset.lastModified.toLocaleDateString(),
-        description: `Healthcare dataset folder containing ${dataset.fileCount} files: ${dataset.name}`,
-        tags: ['healthcare', 'folder', 'dataset'],
-        geography: 'Healthcare Data',
-        demographics: ['All Age Groups'],
+        description: dataset.description || `Dataset folder containing ${dataset.fileCount} files: ${dataset.name}`, // Use metadata description
+        tags: dataset.tags || [], // Use tags from dataset metadata
+        geography: dataset.userGeography || 'Unknown', // Use geography from metadata
+        demographics: dataset.userDemographics || ['Unknown'], // Use demographics from metadata
         date: dataset.lastModified.toISOString().split('T')[0],
         key: dataset.key, // Store the S3 folder path for accessing the dataset
         accessLevel: dataset.accessLevel,
@@ -77,9 +77,11 @@ export default function DatasetExplorerPage() {
       console.log('=== Final Datasets Array ===');
       console.log('Total datasets:', transformedDatasets.length);
       console.log('Dataset IDs:', transformedDatasets.map(d => d.id));
+      console.log('Dataset tags:', transformedDatasets.map(d => ({ name: d.name, tags: d.tags })));
+      console.log('Dataset types:', transformedDatasets.map(d => ({ name: d.name, type: d.type })));
+      console.log('Dataset metadata sample:', transformedDatasets[0]);
     } catch (err) {
       console.error('Failed to load datasets:', err);
-      setError(err.message);
 
       // Set empty datasets on error instead of using mock data
       if (err.message.includes('not authorized')) {
@@ -131,12 +133,10 @@ export default function DatasetExplorerPage() {
     }
 
     // Apply search
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
+    if (searchText) {
+      const query = searchText.toLowerCase();
       result = result.filter(dataset =>
-        dataset.name.toLowerCase().includes(query) ||
-        dataset.description.toLowerCase().includes(query) ||
-        dataset.tags.some(tag => tag.toLowerCase().includes(query))
+        dataset.name.toLowerCase().includes(query)
       );
     }
 
@@ -186,7 +186,7 @@ export default function DatasetExplorerPage() {
     }
 
     return result;
-  }, [datasets, filters, searchQuery, sortConfig]);
+  }, [datasets, filters, searchText, sortConfig]);
 
   const MainExplorer = () => (
     <>
@@ -217,9 +217,9 @@ export default function DatasetExplorerPage() {
               <div className="relative">
                 <input
                   type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search datasets..."
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  placeholder="Search dataset names..."
                   className="w-full pl-10 pr-4 py-2 rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-card-dark text-textPrimary-light dark:text-textPrimary-dark focus:ring-2 focus:ring-accent-light dark:focus:ring-accent-dark text-sm sm:text-base"
                 />
                 <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-textSecondary-light dark:text-textSecondary-dark" />
@@ -239,7 +239,6 @@ export default function DatasetExplorerPage() {
                 )}
               </button>
               <button
-                onClick={(e) => setSortMenuAnchor(e.currentTarget)}
                 className="flex items-center gap-2 px-3 sm:px-4 py-2 border border-border-light dark:border-border-dark rounded-lg text-textPrimary-light dark:text-textPrimary-dark hover:bg-gray-50 dark:hover:bg-card-hover-dark text-sm"
               >
                 <HiOutlineSortAscending />

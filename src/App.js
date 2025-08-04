@@ -15,6 +15,8 @@ import CreateProject from './pages/CreateProject';
 import NotFound from './pages/NotFound';
 import Login from './pages/Login';
 import Settings from './pages/Settings';
+import FUJIIntegrationDemo from './pages/FUJIIntegrationDemo';
+import OAuthCallback from './pages/OAuthCallback';
 import SingleProject from './sections/Projects/SingleProject';
 import ProjectVisualization from './sections/Projects/ProjectVisualizationEnhanced';
 import ProjectVisualizationDashboard from './sections/Projects/ProjectVisualizationDashboard';
@@ -22,6 +24,9 @@ import ProjectVisualizationSmart from './sections/Projects/ProjectVisualizationS
 import { SettingsProvider } from './context/SettingsContext';
 import { AuthProvider } from './context/AuthContext';
 import { SessionProvider } from './context/SessionContext';
+import { TutorialProvider } from './context/TutorialContext';
+import { DemoProvider } from './context/DemoContext';
+import { NotificationProvider } from './context/NotificationContext';
 
 // Configure Amplify
 Amplify.configure(awsconfig);
@@ -49,6 +54,7 @@ function AppContent() {
     <Layout>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/oauth-callback" element={<OAuthCallback />} />
         <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         <Route path="/projects/:id/notebook-ide" element={<ProtectedRoute><ProjectNotebookIDE /></ProtectedRoute>} />
         <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
@@ -60,6 +66,7 @@ function AppContent() {
         <Route path="/projects/:id/dashboard" element={<ProtectedRoute><ProjectVisualizationDashboard /></ProtectedRoute>} />
         <Route path="/projects/:id/smart-viz" element={<ProtectedRoute><ProjectVisualizationSmart /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route path="/fuji-demo" element={<ProtectedRoute><FUJIIntegrationDemo /></ProtectedRoute>} />
         <Route path="/404" element={<NotFound />} />
         <Route path="*" element={<Navigate to="/404" replace />} />
       </Routes>
@@ -71,9 +78,15 @@ function App() {
   return (
     <AuthProvider>
       <SettingsProvider>
-        <SessionProvider>
-          <AppContent />
-        </SessionProvider>
+        <TutorialProvider>
+          <DemoProvider>
+            <SessionProvider>
+              <NotificationProvider>
+                <AppContent />
+              </NotificationProvider>
+            </SessionProvider>
+          </DemoProvider>
+        </TutorialProvider>
       </SettingsProvider>
     </AuthProvider>
   );

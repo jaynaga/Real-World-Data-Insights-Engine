@@ -48,14 +48,14 @@ export const createProject = async (projectData) => {
 // List all projects for the current user
 export const listProjects = async () => {
   try {
-    console.log('Listing projects...');
+    console.log('📋 Listing projects from S3...');
 
     const files = await Storage.list(PROJECTS_PREFIX, {
       level: 'protected',
       pageSize: 100
     });
 
-    console.log('Project files found:', files);
+    console.log('📂 Project files found:', files);
 
     // Filter for JSON project files and load their content
     const projectFiles = files.filter(file =>
@@ -63,19 +63,23 @@ export const listProjects = async () => {
     );
 
     if (projectFiles.length === 0) {
-      console.log('No projects found');
+      console.log('📭 No projects found');
       return [];
     }
 
     // Load project data for each file
     const projectPromises = projectFiles.map(async (file) => {
       try {
+        console.log(`📖 Loading project: ${file.key}`);
         const content = await Storage.get(file.key, {
           level: 'protected',
-          download: true
+          download: true,
+          cacheControl: 'no-cache', // Disable caching to get fresh data
+          expires: 0
         });
 
         const projectData = JSON.parse(await content.Body.text());
+        console.log(`📄 Loaded project "${projectData.title}" with ${projectData.selectedDatasets?.length || 0} datasets`);
 
         return {
           ...projectData,
@@ -84,13 +88,24 @@ export const listProjects = async () => {
           lastModified: file.lastModified || projectData.updatedAt
         };
       } catch (error) {
-        console.error(`Error loading project ${file.key}:`, error);
+        console.error(`❌ Error loading project ${file.key}:`, error);
         return null;
       }
     });
 
     const projects = (await Promise.all(projectPromises))
-      .filter(project => project !== null)
+      .filter(project => {
+        // Filter out null projects and projects without essential data
+        if (!project) return false;
+        
+        // Ensure project has essential fields
+        if (!project.id || !project.title || typeof project.title !== 'string' || project.title.trim() === '') {
+          console.log('Filtering out project with missing/invalid essential data:', project);
+          return false;
+        }
+        
+        return true;
+      })
       .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)); // Sort by most recent first
 
     console.log('Loaded projects:', projects);
@@ -133,8 +148,11 @@ export const getProject = async (projectId) => {
 // Update an existing project
 export const updateProject = async (projectId, updates) => {
   try {
+    console.log('🔄 updateProject called with:', { projectId, updates });
+    
     // First get the existing project
     const existingProject = await getProject(projectId);
+    console.log('📋 Existing project:', existingProject);
 
     // Merge updates with existing data
     const updatedProject = {
@@ -144,10 +162,13 @@ export const updateProject = async (projectId, updates) => {
       version: parseFloat(existingProject.version || '1.0') + 0.1 + ''
     };
 
+    console.log('📋 Updated project data:', updatedProject);
+
     // Save back to S3
     const projectKey = `${PROJECTS_PREFIX}${projectId}.json`;
+    console.log('💾 Saving to S3 with key:', projectKey);
 
-    await Storage.put(projectKey, JSON.stringify(updatedProject, null, 2), {
+    const result = await Storage.put(projectKey, JSON.stringify(updatedProject, null, 2), {
       level: 'protected',
       contentType: 'application/json',
       metadata: {
@@ -157,7 +178,8 @@ export const updateProject = async (projectId, updates) => {
       }
     });
 
-    console.log('Project updated successfully:', updatedProject);
+    console.log('✅ Storage.put result:', result);
+    console.log('✅ Project updated successfully in S3');
     return updatedProject;
   } catch (error) {
     console.error(`Error updating project ${projectId}:`, error);
@@ -187,14 +209,28 @@ export const deleteProject = async (projectId) => {
 // Add dataset to project
 export const addDatasetToProject = async (projectId, datasetId) => {
   try {
+    console.log('🔄 addDatasetToProject called with:', { projectId, datasetId });
     const project = await getProject(projectId);
+    console.log('📋 Current project:', project);
+    console.log('📋 Current selectedDatasets:', project.selectedDatasets);
 
-    if (!project.selectedDatasets.includes(datasetId)) {
-      const updatedDatasets = [...project.selectedDatasets, datasetId];
+    // Ensure selectedDatasets is an array
+    const selectedDatasets = project.selectedDatasets || [];
+    console.log('📋 Ensured selectedDatasets array:', selectedDatasets);
+
+    if (!selectedDatasets.includes(datasetId)) {
+      const updatedDatasets = [...selectedDatasets, datasetId];
+      console.log('📋 Updated datasets array:', updatedDatasets);
+      
       await updateProject(projectId, { selectedDatasets: updatedDatasets });
+      console.log('✅ Project updated in S3');
+    } else {
+      console.log('⚠️ Dataset already in project, skipping');
     }
 
-    return await getProject(projectId);
+    const updatedProject = await getProject(projectId);
+    console.log('📋 Final project state:', updatedProject);
+    return updatedProject;
   } catch (error) {
     console.error(`Error adding dataset to project ${projectId}:`, error);
     throw error;
@@ -204,12 +240,25 @@ export const addDatasetToProject = async (projectId, datasetId) => {
 // Remove dataset from project
 export const removeDatasetFromProject = async (projectId, datasetId) => {
   try {
+    console.log('🔄 removeDatasetFromProject called with:', { projectId, datasetId });
     const project = await getProject(projectId);
+    console.log('📋 Current project:', project);
+    console.log('📋 Current selectedDatasets:', project.selectedDatasets);
 
-    const updatedDatasets = project.selectedDatasets.filter(id => id !== datasetId);
+    // Ensure selectedDatasets is an array
+    const selectedDatasets = project.selectedDatasets || [];
+    console.log('📋 Ensured selectedDatasets array:', selectedDatasets);
+
+    const updatedDatasets = selectedDatasets.filter(id => id !== datasetId);
+    console.log('📋 Updated datasets array after removal:', updatedDatasets);
+    console.log('📋 Removed dataset:', datasetId);
+    
     await updateProject(projectId, { selectedDatasets: updatedDatasets });
+    console.log('✅ Project updated in S3 after removal');
 
-    return await getProject(projectId);
+    const finalProject = await getProject(projectId);
+    console.log('📋 Final project state after removal:', finalProject);
+    return finalProject;
   } catch (error) {
     console.error(`Error removing dataset from project ${projectId}:`, error);
     throw error;

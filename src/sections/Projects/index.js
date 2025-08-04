@@ -4,6 +4,7 @@ import { FaProjectDiagram, FaDatabase, FaPlay, FaCheckCircle, FaHeart, FaUserAlt
 import { MdOutlineShare } from 'react-icons/md';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ProjectDetails from './ProjectDetails';
+import ProjectSharingModal from '../../components/ProjectSharingModal';
 import { listProjects, getProjectStats } from '../../services/projectService';
 
 export default function ProjectsIndexPage() {
@@ -13,10 +14,12 @@ export default function ProjectsIndexPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
+  const [showSharingModal, setShowSharingModal] = useState(false);
+  const [selectedProjectForSharing, setSelectedProjectForSharing] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Handle success/error messages from navigation state
+  // Handle success/error messages from navigation state and refresh projects
   useEffect(() => {
     if (location.state?.message) {
       setMessage({
@@ -30,11 +33,43 @@ export default function ProjectsIndexPage() {
       // Auto-hide message after 5 seconds
       setTimeout(() => setMessage(null), 5000);
     }
+
+    // Refresh projects when navigating to this page (e.g., from individual project pages)
+    if (location.pathname === '/projects') {
+      console.log('🔄 Navigated to projects page, refreshing data...');
+      loadProjects();
+    }
   }, [location.state, location.pathname, navigate]);
 
-  // Load projects and stats on component mount
+  // Load projects and stats on component mount and location changes
   useEffect(() => {
     loadProjects();
+  }, []);
+
+  // Refresh projects when returning to this page (e.g., from individual project pages)
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('🔄 Page focus detected, refreshing projects...');
+      loadProjects();
+    };
+
+    // Listen for window focus events (when user returns to the tab/window)
+    window.addEventListener('focus', handleFocus);
+    
+    // Listen for page visibility changes (when user switches between tabs)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('🔄 Page visible, refreshing projects...');
+        loadProjects();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const loadProjects = async () => {
@@ -42,12 +77,30 @@ export default function ProjectsIndexPage() {
       setLoading(true);
       setError(null);
 
+      console.log('🔄 Loading projects from S3...');
       const [projectsData, statsData] = await Promise.all([
         listProjects(),
         getProjectStats()
       ]);
 
-      setProjects(projectsData);
+      console.log('📋 Raw projects data from S3:', projectsData);
+      
+      // Log each project's dataset count
+      projectsData.forEach(project => {
+        console.log(`📊 Project "${project.title}" has ${project.selectedDatasets?.length || 0} datasets:`, project.selectedDatasets);
+      });
+      
+      // Filter out any malformed projects
+      const validProjects = projectsData.filter(project => {
+        const isValid = project && project.id && project.title && project.title.trim() !== '';
+        if (!isValid) {
+          console.log('Filtering out invalid project:', project);
+        }
+        return isValid;
+      });
+
+      console.log('✅ Setting valid projects:', validProjects.length);
+      setProjects(validProjects);
       setStats(statsData);
     } catch (error) {
       console.error('Error loading projects:', error);
@@ -97,10 +150,22 @@ export default function ProjectsIndexPage() {
     return date.toLocaleDateString();
   };
 
+  // Handle opening the share modal
+  const handleShareProject = (project) => {
+    setSelectedProjectForSharing(project);
+    setShowSharingModal(true);
+  };
+
+  // Handle closing the share modal
+  const handleCloseSharingModal = () => {
+    setShowSharingModal(false);
+    setSelectedProjectForSharing(null);
+  };
+
   // Filter projects by search
   const filteredProjects = projects.filter(project =>
-    project.title.toLowerCase().includes(search.toLowerCase()) ||
-    project.description.toLowerCase().includes(search.toLowerCase())
+    (project.title || '').toLowerCase().includes(search.toLowerCase()) ||
+    (project.description || '').toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -115,12 +180,21 @@ export default function ProjectsIndexPage() {
               Manage and organize your data analysis projects
             </p>
           </div>
-          <button
-            onClick={() => navigate('/projects/create')}
-            className="bg-blue-500 text-white px-4 py-2 rounded shadow hover:bg-blue-600 text-sm flex items-center gap-2"
-          >
-            <FaPlus /> New Project
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={loadProjects}
+              className="bg-green-500 text-white px-3 py-2 rounded shadow hover:bg-green-600 text-sm"
+              title="Refresh projects from S3"
+            >
+              🔄 Refresh
+            </button>
+            <button
+              onClick={() => navigate('/projects/create')}
+              className="bg-blue-500 text-white px-4 py-2 rounded shadow hover:bg-blue-600 text-sm flex items-center gap-2"
+            >
+              <FaPlus /> New Project
+            </button>
+          </div>
         </div>
 
         {/* Success/Error Message */}
@@ -238,17 +312,19 @@ export default function ProjectsIndexPage() {
               )}
             </div>
           ) : (
-            filteredProjects.map((project) => (
+            filteredProjects
+              .filter(project => project && project.id && project.title && project.title.trim() !== '')
+              .map((project) => (
               <div key={project.id} className="bg-white dark:bg-card-dark p-4 rounded shadow hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-2 mb-2">
                   {getStatusIcon(project.status)}
-                  <h2 className="font-semibold text-md">{project.title}</h2>
+                  <h2 className="font-semibold text-md">{project.title || 'Untitled Project'}</h2>
                 </div>
                 <p className="text-sm mb-2 text-textSecondary-light dark:text-textSecondary-dark line-clamp-2">
-                  {project.description}
+                  {project.description || 'No description available'}
                 </p>
-                <span className={`inline-block text-xs px-2 py-1 rounded-full mb-3 font-medium ${getStatusColor(project.status || 'active')}`}>
-                  {(project.status || 'active').charAt(0).toUpperCase() + (project.status || 'active').slice(1)}
+                <span className={`inline-block text-xs px-2 py-1 rounded-full mb-3 font-medium ${getStatusColor(project.status)}`}>
+                  {(project.status || 'unknown').charAt(0).toUpperCase() + (project.status || 'unknown').slice(1)}
                 </span>
                 <div className="flex justify-between items-center">
                   <div className="text-xs text-gray-500">
@@ -275,9 +351,18 @@ export default function ProjectsIndexPage() {
                       </button>
                     )}
                     {/* Removed Visualizations button. Visualization now accessed from SingleProject page. */}
-                    <button className="text-gray-400 hover:text-gray-600">
-                      <MdOutlineShare size={16} />
-                    </button>
+                    <div className="relative">
+                      <button 
+                        className="text-gray-400 hover:text-gray-600"
+                        onClick={() => handleShareProject(project)}
+                        title="Share project (Coming Soon)"
+                      >
+                        <MdOutlineShare size={16} />
+                      </button>
+                      <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs px-1 rounded-full text-[8px] leading-3">
+                        Soon
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -285,6 +370,15 @@ export default function ProjectsIndexPage() {
           )}
         </div>
       </div>
+
+      {/* Project Sharing Modal */}
+      {selectedProjectForSharing && (
+        <ProjectSharingModal
+          isOpen={showSharingModal}
+          onClose={handleCloseSharingModal}
+          project={selectedProjectForSharing}
+        />
+      )}
     </div>
   );
 }

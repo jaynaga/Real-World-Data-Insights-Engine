@@ -1,13 +1,119 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { DndContext, useDraggable, useDroppable, DragOverlay } from "@dnd-kit/core";
 import Chart from "react-apexcharts";
-import { listDatasets, getDatasetFile } from "../../utils/storageUtils";
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import { listDatasets, getDatasetFile, listDatasetFiles, getDatasetFileContent } from "../../utils/storageUtils";
 import { getProject, updateProject } from "../../services/projectService";
+
+// Import Leaflet CSS
+import 'leaflet/dist/leaflet.css';
+
+// Fix for default markers in react-leaflet
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
+  iconUrl: require('leaflet/dist/images/marker-icon.png'),
+  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
+});
 
 // ====================================================================
 // --------------------  UTILITY FUNCTIONS  ----------------------------
 // ====================================================================
+
+/** Enhanced Color Palettes for Better Aesthetics */
+const getColorPalette = (chartType, itemCount = 10) => {
+  const palettes = {
+    // Modern vibrant palette for most charts
+    default: [
+      '#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe',
+      '#43e97b', '#38f9d7', '#ffecd2', '#fcb69f', '#a8edea', '#fed6e3',
+      '#ff9a9e', '#fecfef', '#ffecd2', '#fcb69f', '#667eea', '#764ba2'
+    ],
+    // Sophisticated palette for business/professional charts
+    professional: [
+      '#2563eb', '#dc2626', '#059669', '#d97706', '#7c3aed', '#db2777',
+      '#0891b2', '#65a30d', '#ea580c', '#9333ea', '#be185d', '#0369a1'
+    ],
+    // Warm palette for scatter/bubble charts
+    warm: [
+      '#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#54a0ff', '#5f27cd',
+      '#00d2d3', '#ff9f43', '#a55eea', '#26de81', '#fc5c65', '#fd79a8'
+    ],
+    // Cool palette for heatmaps
+    cool: [
+      '#3742fa', '#2f3542', '#57606f', '#747d8c', '#a4b0be', '#dfe4ea',
+      '#f1f2f6', '#ffffff', '#ced6e0', '#a4b0be', '#747d8c', '#57606f'
+    ],
+    // Earth tones for geographic visualizations
+    earth: [
+      '#8d5524', '#c0392b', '#d68910', '#239b56', '#21618c', '#6c3483',
+      '#a04000', '#b7950b', '#148f77', '#1f618d', '#7d3c98', '#a93226'
+    ],
+    // Pastel palette for pie charts
+    pastel: [
+      '#ffeaa7', '#fab1a0', '#fd79a8', '#fdcb6e', '#e17055', '#d63031',
+      '#74b9ff', '#0984e3', '#00b894', '#00cec9', '#6c5ce7', '#a29bfe'
+    ]
+  };
+
+  const palette = palettes[chartType] || palettes.default;
+  
+  // Ensure we have enough colors by cycling through the palette
+  const colors = [];
+  for (let i = 0; i < itemCount; i++) {
+    colors.push(palette[i % palette.length]);
+  }
+  
+  return colors;
+};
+
+/** Enhanced Data Type Detection */
+const detectDataType = (values) => {
+  if (!Array.isArray(values) || values.length === 0) return 'unknown';
+  
+  // Remove null/undefined/empty values for analysis
+  const cleanValues = values.filter(v => v !== null && v !== undefined && v !== '');
+  if (cleanValues.length === 0) return 'unknown';
+  
+  let numericCount = 0;
+  let dateCount = 0;
+  let booleanCount = 0;
+  let stringCount = 0;
+  
+  cleanValues.slice(0, Math.min(100, cleanValues.length)).forEach(value => {
+    // Check if it's a number
+    if (!isNaN(value) && !isNaN(parseFloat(value)) && isFinite(value)) {
+      numericCount++;
+    }
+    // Check if it's a date
+    else if (!isNaN(Date.parse(value)) && value.toString().match(/\d{4}|\d{2}\/\d{2}|\d{2}-\d{2}/)) {
+      dateCount++;
+    }
+    // Check if it's boolean
+    else if (typeof value === 'boolean' || ['true', 'false', '1', '0', 'yes', 'no'].includes(String(value).toLowerCase())) {
+      booleanCount++;
+    }
+    // Otherwise it's a string/categorical
+    else {
+      stringCount++;
+    }
+  });
+  
+  const total = numericCount + dateCount + booleanCount + stringCount;
+  const threshold = 0.8; // 80% threshold for type determination
+  
+  if (numericCount / total >= threshold) return 'numeric';
+  if (dateCount / total >= threshold) return 'datetime';
+  if (booleanCount / total >= threshold) return 'boolean';
+  
+  // For categorical data, check if it has many unique values
+  const uniqueValues = new Set(cleanValues);
+  if (uniqueValues.size > cleanValues.length * 0.8) return 'text'; // High cardinality text
+  
+  return 'categorical';
+};
 
 /** Robust CSV Parser (handles quotes) */
 const parseCSV = (csvText) => {
@@ -129,7 +235,8 @@ const getChartTypeRecommendation = (chartType) => {
     'heatmap': 'Best for: Correlation matrix with 3+ numeric variables',
     'boxplot': 'Best for: Statistical distribution analysis and outlier detection',
     'histogram': 'Best for: Understanding data distribution patterns',
-    'bubble': 'Best for: 3-dimensional numeric data relationships'
+    'bubble': 'Best for: 3-dimensional numeric data relationships',
+    'map': 'Best for: Geographic data with latitude/longitude coordinates'
   };
   return recommendations[chartType] || 'Suitable for general data visualization';
 };
@@ -199,23 +306,100 @@ const detectColumnTypes = (rows) => {
 // --------------------  VISUALIZATION WIDGET  ------------------------
 // ====================================================================
 
-function VisualizationWidget({ widget, onUpdate, onDelete, datasets, allWidgets, resolveCollisions }) {
+function VisualizationWidget({ widget, onUpdate, onDelete, datasets, allWidgets, resolveCollisions, loadedFiles, allColumnTypes }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [parsedData, setParsedData] = useState(null);
   const [isBeingResized, setIsBeingResized] = useState(false);
 
-  const chartTypes = [
-    { value: 'bar', label: 'Bar', icon: '📊', description: 'Compare categories' },
-    { value: 'line', label: 'Line', icon: '📈', description: 'Show trends over time' },
-    { value: 'area', label: 'Area', icon: '🏔️', description: 'Show cumulative data' },
-    { value: 'scatter', label: 'Scatter', icon: '🔵', description: 'Find correlations' },
-    { value: 'pie', label: 'Pie', icon: '🥧', description: 'Show proportions' },
-    { value: 'heatmap', label: 'Heatmap', icon: '🌡️', description: 'Show data density' },
-    { value: 'box', label: 'Box Plot', icon: '📦', description: 'Show distributions' },
-    { value: 'histogram', label: 'Histogram', icon: '📈', description: 'Show frequency distribution' },
-    { value: 'bubble', label: 'Bubble', icon: '🫧', description: 'Three-dimensional data' }
-  ];
+  const chartTypes = useMemo(() => [
+    { value: 'bar', label: 'Bar', icon: '📊', description: 'Compare categories', available: true },
+    { value: 'line', label: 'Line', icon: '📈', description: 'Show trends over time', available: true },
+    { value: 'area', label: 'Area', icon: '🏔️', description: 'Show cumulative data', available: true },
+    { value: 'scatter', label: 'Scatter', icon: '🔵', description: 'Find correlations', available: true },
+    { value: 'pie', label: 'Pie', icon: '🥧', description: 'Show proportions', available: true },
+    { value: 'heatmap', label: 'Heatmap', icon: '🌡️', description: 'Show data density', available: false, comingSoon: true },
+    { value: 'boxplot', label: 'Box Plot', icon: '📦', description: 'Show distributions', available: false, comingSoon: true },
+    { value: 'histogram', label: 'Histogram', icon: '📈', description: 'Show frequency distribution', available: true },
+    { value: 'bubble', label: 'Bubble', icon: '🫧', description: 'Three-dimensional data', available: false, comingSoon: true },
+    { value: 'map', label: 'Geographic Map', icon: '🗺️', description: 'Show geographic data points', available: true }
+  ], []);
+
+  // Check if current variable combination is incompatible
+  const checkVariableCompatibility = () => {
+    if (!widget.xVar || !widget.yVar || !widget.chartType) return null;
+    
+    // Get data types for variables
+    const datasetId = widget.datasetId;
+    const columnTypes = allColumnTypes[datasetId] || {};
+    const xType = columnTypes[widget.xVar];
+    const yType = columnTypes[widget.yVar];
+    
+    if (!xType || !yType) return null;
+    
+    const incompatibilities = [];
+    
+    // Define incompatible combinations based on chart type requirements
+    switch (widget.chartType) {
+      case 'line':
+      case 'area':
+        if (!yType.isNumeric) {
+          incompatibilities.push('Line and area charts work best with numeric Y-axis variables');
+        }
+        break;
+      case 'bar':
+      case 'column':
+        if (!yType.isNumeric) {
+          incompatibilities.push('Bar and column charts work best with numeric Y-axis variables');
+        }
+        break;
+      case 'scatter':
+      case 'bubble':
+        if (!xType.isNumeric || !yType.isNumeric) {
+          incompatibilities.push('Scatter and bubble charts work best with numeric variables for both axes');
+        }
+        break;
+      case 'boxplot':
+        if (!yType.isNumeric) {
+          incompatibilities.push('Box plots require numeric Y-axis variables');
+        }
+        break;
+      case 'histogram':
+        if (!xType.isNumeric) {
+          incompatibilities.push('Histograms require numeric X-axis variables');
+        }
+        break;
+      case 'heatmap':
+        if (!yType.isNumeric) {
+          incompatibilities.push('Heatmaps work best with numeric Y-axis variables');
+        }
+        break;
+      case 'map':
+        // Check if data has geographic coordinate columns
+        const datasetId = widget.datasetId;
+        const columnTypes = allColumnTypes[datasetId] || {};
+        const allColumns = Object.keys(columnTypes);
+        
+        const hasLatitude = allColumns.some(col => 
+          col.toLowerCase().includes('lat') || 
+          col.toLowerCase().includes('latitude')
+        );
+        const hasLongitude = allColumns.some(col => 
+          col.toLowerCase().includes('lng') || 
+          col.toLowerCase().includes('lon') ||
+          col.toLowerCase().includes('longitude')
+        );
+        
+        if (!hasLatitude || !hasLongitude) {
+          incompatibilities.push('Maps require data with latitude and longitude columns (named lat/latitude and lng/lon/longitude)');
+        }
+        break;
+      default:
+        break;
+    }
+    
+    return incompatibilities.length > 0 ? incompatibilities : null;
+  };
 
   // Load dataset when widget dataset changes
   const loadWidgetData = useCallback(async () => {
@@ -224,25 +408,51 @@ function VisualizationWidget({ widget, onUpdate, onDelete, datasets, allWidgets,
     setLoading(true);
     setError(null);
     try {
-      const response = await getDatasetFile(widget.datasetId);
-      const csvText = await response.Body.text();
-      const rows = parseCSV(csvText);
-      const samplingResult = sampleData(rows, 5000, 2000);
+      // Get all loaded files for this dataset
+      const datasetLoadedFiles = loadedFiles[widget.datasetId] || {};
+      const loadedFileKeys = Object.keys(datasetLoadedFiles).filter(key => datasetLoadedFiles[key]);
       
-      setParsedData(samplingResult.data);
+      if (loadedFileKeys.length === 0) {
+        // Fallback to original method (get first file from dataset)
+        console.log(`📊 No loaded files found, using fallback method for dataset: ${widget.datasetId}`);
+        const response = await getDatasetFile(widget.datasetId);
+        const csvText = await response.Body.text();
+        const rows = parseCSV(csvText);
+        const samplingResult = sampleData(rows, 5000, 2000);
+        setParsedData(samplingResult.data);
+      } else if (loadedFileKeys.length === 1) {
+        // Single file - load directly
+        const fileKey = loadedFileKeys[0];
+        console.log(`📊 Loading widget data from single file: ${fileKey}`);
+        const response = await getDatasetFileContent(fileKey);
+        const csvText = await response.Body.text();
+        const rows = parseCSV(csvText);
+        const samplingResult = sampleData(rows, 5000, 2000);
+        setParsedData(samplingResult.data);
+      } else {
+        // Multiple files - need to merge data (for now, use first file)
+        // TODO: Implement proper multi-file data merging
+        const firstFileKey = loadedFileKeys[0];
+        console.log(`📊 Multiple files loaded, using first file for now: ${firstFileKey}`);
+        const response = await getDatasetFileContent(firstFileKey);
+        const csvText = await response.Body.text();
+        const rows = parseCSV(csvText);
+        const samplingResult = sampleData(rows, 5000, 2000);
+        setParsedData(samplingResult.data);
+      }
       
     } catch (err) {
       setError(`Failed to load data: ${err.message}`);
     } finally {
       setLoading(false);
     }
-  }, [widget.datasetId]);
+  }, [widget.datasetId, loadedFiles]);
 
   useEffect(() => {
-    if (widget.datasetId && !parsedData) {
+    if (widget.datasetId) {
       loadWidgetData();
     }
-  }, [widget.datasetId, parsedData, loadWidgetData]);
+  }, [widget.datasetId, loadedFiles, loadWidgetData]);
 
 /** Generate plot options for specific chart types */
 const getPlotOptions = (chartType) => {
@@ -301,15 +511,16 @@ const getPlotOptions = (chartType) => {
 };
 
   const generateChart = useCallback(async () => {
-    if (!parsedData || !widget.xVar || !widget.yVar) return null;
+    if (!parsedData || !widget.xVar || (!widget.yVar && widget.chartType !== 'histogram')) return null;
 
     try {
       const rows = parsedData;
       const header = rows[0];
       const xIndex = header.indexOf(widget.xVar);
-      const yIndex = header.indexOf(widget.yVar);
+      const yIndex = widget.yVar ? header.indexOf(widget.yVar) : -1;
+      const zIndex = widget.zVar ? header.indexOf(widget.zVar) : -1;
       
-      if (xIndex === -1 || yIndex === -1) return null;
+      if (xIndex === -1 || (yIndex === -1 && widget.chartType !== 'histogram')) return null;
 
       const dataRows = rows.slice(1);
       if (dataRows.length === 0) return null; // No data to process
@@ -317,39 +528,61 @@ const getPlotOptions = (chartType) => {
       const maxRows = 500;
       const limitedRows = dataRows.length > maxRows ? dataRows.slice(0, maxRows) : dataRows;
       
-      // Get column type information for enhanced processing
-      const columnTypes = detectColumnTypes(rows);
-      const yType = columnTypes[widget.yVar];
+      // Enhanced data type detection
+      // Data type detection for chart processing
+      const yType = widget.yVar ? detectDataType(limitedRows.map(row => row[yIndex])) : null;
 
       let processedData = [];
       let categories = [];
 
-      // Enhanced chart type processing with better validation
+      // Enhanced chart type processing with Z-variable support
       if (widget.chartType === 'scatter' || widget.chartType === 'bubble') {
         const maxPoints = widget.chartType === 'bubble' ? 50 : 100;
-        const validData = [];
         
-        for (let i = 0; i < Math.min(limitedRows.length, maxPoints); i++) {
-          const row = limitedRows[i];
-          const x = parseFloat(row[xIndex]);
-          const y = parseFloat(row[yIndex]);
+        // Handle scatter plots with color grouping (Z variable)
+        if (widget.chartType === 'scatter' && widget.zVar && zIndex !== -1) {
+          const groups = {};
+          limitedRows.forEach(row => {
+            const x = parseFloat(row[xIndex]);
+            const y = parseFloat(row[yIndex]);
+            const z = row[zIndex];
+            
+            if (!isNaN(x) && !isNaN(y) && isFinite(x) && isFinite(y)) {
+              const groupKey = String(z || 'Unknown');
+              if (!groups[groupKey]) groups[groupKey] = [];
+              groups[groupKey].push({ x, y });
+            }
+          });
           
-          if (!isNaN(x) && !isNaN(y) && isFinite(x) && isFinite(y)) {
-            if (widget.chartType === 'bubble') {
-              validData.push({
-                x: x,
-                y: y,
-                z: Math.abs(y) + 1 // Size based on y-value
-              });
-            } else {
-              validData.push({ x: x, y: y });
+          // Convert to ApexCharts series format for grouped scatter
+          processedData = Object.entries(groups).map(([groupName, points]) => ({
+            name: groupName,
+            data: points.slice(0, maxPoints / Math.max(Object.keys(groups).length, 1))
+          }));
+        } else {
+          // Regular scatter or bubble chart
+          const validData = [];
+          for (let i = 0; i < Math.min(limitedRows.length, maxPoints); i++) {
+            const row = limitedRows[i];
+            const x = parseFloat(row[xIndex]);
+            const y = parseFloat(row[yIndex]);
+            
+            if (!isNaN(x) && !isNaN(y) && isFinite(x) && isFinite(y)) {
+              if (widget.chartType === 'bubble') {
+                // Enhanced bubble size calculation using Z variable
+                const z = widget.zVar && zIndex !== -1 ? 
+                  Math.abs(parseFloat(row[zIndex]) || 1) : 
+                  Math.abs(y) + 1;
+                validData.push({ x, y, z });
+              } else {
+                validData.push({ x, y });
+              }
             }
           }
+          processedData = validData;
         }
         
-        processedData = validData;
-        if (processedData.length === 0) {
-          // Fallback to prevent empty data
+        if (Array.isArray(processedData) && processedData.length === 0) {
           processedData = [{ x: 0, y: 0 }];
         }
       } else if (widget.chartType === 'pie') {
@@ -444,6 +677,7 @@ const getPlotOptions = (chartType) => {
         }
       } else if (widget.chartType === 'heatmap') {
         // Create correlation heatmap for numeric columns
+        const columnTypes = detectColumnTypes(rows);
         const numericColumns = Object.entries(columnTypes)
           .filter(([col, type]) => type.isNumeric && type.stats && type.stats.count > 0)
           .map(([col]) => col)
@@ -486,6 +720,49 @@ const getPlotOptions = (chartType) => {
           processedData = [{ name: 'No Data', data: [{ x: 'No Data', y: 0 }] }];
           categories = ['No Data'];
         }
+      } else if (widget.chartType === 'map') {
+        // Geographic map visualization
+        const mapData = [];
+        const maxPoints = 100; // Limit for performance
+        
+        // Try to detect latitude and longitude columns
+        const latColumn = header.find(col => 
+          col.toLowerCase().includes('lat') || 
+          col.toLowerCase().includes('latitude') ||
+          col.toLowerCase().includes('y')
+        );
+        const lngColumn = header.find(col => 
+          col.toLowerCase().includes('lng') || 
+          col.toLowerCase().includes('lon') ||
+          col.toLowerCase().includes('longitude') ||
+          col.toLowerCase().includes('x')
+        );
+        
+        if (latColumn && lngColumn) {
+          const latIndex = header.indexOf(latColumn);
+          const lngIndex = header.indexOf(lngColumn);
+          
+          for (let i = 0; i < Math.min(limitedRows.length, maxPoints); i++) {
+            const row = limitedRows[i];
+            const lat = parseFloat(row[latIndex]);
+            const lng = parseFloat(row[lngIndex]);
+            
+            if (!isNaN(lat) && !isNaN(lng) && 
+                lat >= -90 && lat <= 90 && 
+                lng >= -180 && lng <= 180) {
+              mapData.push({
+                lat: lat,
+                lng: lng,
+                label: `${widget.xVar}: ${row[xIndex] || 'N/A'}`,
+                value: row[yIndex] || 'N/A'
+              });
+            }
+          }
+        }
+        
+        // Store map data for rendering
+        processedData = mapData;
+        categories = [];
       } else {
         // Default processing for bar, line, area charts
         const maxCategories = 20;
@@ -512,6 +789,23 @@ const getPlotOptions = (chartType) => {
       }
 
       // Enhanced chart configuration with better error handling
+      // Enhanced color palette selection based on chart type and data
+      const chartColorType = {
+        'pie': 'pastel',
+        'bubble': 'warm',
+        'scatter': 'warm', 
+        'heatmap': 'cool',
+        'map': 'earth',
+        'bar': 'professional',
+        'line': 'professional',
+        'area': 'professional'
+      }[widget.chartType] || 'default';
+      
+      const colors = getColorPalette(chartColorType, Math.max(processedData?.length || 10, categories?.length || 10)) || [
+        '#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe',
+        '#43e97b', '#38f9d7', '#ffecd2', '#fcb69f'
+      ];
+
       const baseChartType = widget.chartType === 'bubble' ? 'scatter' : 
                            widget.chartType === 'histogram' ? 'column' :
                            widget.chartType === 'boxplot' ? 'boxPlot' :
@@ -529,8 +823,9 @@ const getPlotOptions = (chartType) => {
             redrawOnParentResize: true,
             zoom: { enabled: ['line', 'scatter', 'bubble'].includes(widget.chartType) }
           },
+          colors: colors, // Apply the enhanced color palette
           title: {
-            text: widget.title || `${widget.yVar} vs ${widget.xVar}`,
+            text: widget.title || `${widget.yVar} vs ${widget.xVar}${widget.zVar ? ` (by ${widget.zVar})` : ''}`,
             align: 'center',
             style: { fontSize: '12px', fontWeight: 'bold' }
           },
@@ -544,19 +839,19 @@ const getPlotOptions = (chartType) => {
             labels: { style: { fontSize: '9px' } },
             type: 'numeric'
           } : widget.chartType === 'heatmap' ? {
-            categories: categories,
+            categories: categories || [],
             labels: { rotate: -45, style: { fontSize: '8px' } }
           } : { 
-            categories: categories,
+            categories: categories || [],
             title: { text: widget.xVar, style: { fontSize: '10px' } },
             labels: { 
               style: { fontSize: '9px' }, 
-              rotate: categories.length > 10 ? -45 : 0,
+              rotate: (categories && categories.length > 10) ? -45 : 0,
               maxHeight: 60
             }
           },
           yaxis: widget.chartType === 'heatmap' ? {
-            categories: categories,
+            categories: categories || [],
             labels: { style: { fontSize: '8px' } }
           } : {
             title: { text: widget.yVar, style: { fontSize: '10px' } },
@@ -613,40 +908,185 @@ const getPlotOptions = (chartType) => {
             }
           }
         },
-        series: widget.chartType === 'pie' ? 
-          processedData : 
-          widget.chartType === 'heatmap' ?
-          processedData :
-          widget.chartType === 'boxplot' ?
-          [{ name: widget.yVar, type: 'boxPlot', data: processedData }] :
-          [{ 
-            name: widget.yVar, 
-            data: processedData,
-            type: widget.chartType === 'bubble' ? 'scatter' : undefined
-          }]
+        series: (() => {
+          // Ensure processedData is always valid and iterable
+          if (!processedData || !Array.isArray(processedData)) {
+            processedData = widget.chartType === 'pie' ? [1] : [{ x: 0, y: 0 }];
+          }
+          
+          // Additional safety check to ensure array elements are valid
+          if (Array.isArray(processedData) && processedData.length === 0) {
+            processedData = widget.chartType === 'pie' ? [1] : [{ x: 0, y: 0 }];
+          }
+          
+          if (widget.chartType === 'pie') {
+            const data = Array.isArray(processedData) && processedData.length > 0 ? 
+              processedData.filter(item => item !== null && item !== undefined && !isNaN(Number(item))) : [1];
+            return data.length > 0 ? data : [1];
+          } else if (widget.chartType === 'heatmap') {
+            if (!Array.isArray(processedData) || processedData.length === 0) {
+              return [{ name: 'No Data', data: [{ x: 'No Data', y: 0 }] }];
+            }
+            return processedData.map(series => ({
+              name: series.name || 'Data',
+              data: Array.isArray(series.data) ? series.data.filter(point => 
+                point && typeof point === 'object' && point.x !== undefined && point.y !== undefined
+              ) : [{ x: 'No Data', y: 0 }]
+            }));
+          } else if (widget.chartType === 'boxplot') {
+            const data = Array.isArray(processedData) ? 
+              processedData.filter(item => item !== null && item !== undefined && !isNaN(Number(item))) : [0];
+            return [{ name: widget.yVar || 'Data', data: data.length > 0 ? data : [0] }];
+          } else {
+            // Enhanced handling for scatter plots with grouping
+            if (widget.chartType === 'scatter' && Array.isArray(processedData) && processedData.length > 0 && 
+                processedData[0] && typeof processedData[0] === 'object' && processedData[0].name) {
+              // Multi-series scatter plot (grouped by Z variable)
+              return processedData.map(series => ({
+                name: series.name || 'Data',
+                data: Array.isArray(series.data) ? series.data.filter(point => 
+                  point && typeof point === 'object' && 
+                  point.x !== undefined && point.y !== undefined &&
+                  !isNaN(Number(point.x)) && !isNaN(Number(point.y))
+                ) : [{ x: 0, y: 0 }]
+              }));
+            } else {
+              // Single series chart
+              let data;
+              if (Array.isArray(processedData) && processedData.length > 0) {
+                if (typeof processedData[0] === 'object') {
+                  // Object data points
+                  data = processedData.filter(point => 
+                    point && typeof point === 'object' && 
+                    point.x !== undefined && point.y !== undefined
+                  );
+                } else {
+                  // Simple numeric data
+                  data = processedData.filter(item => 
+                    item !== null && item !== undefined && !isNaN(Number(item))
+                  );
+                }
+              }
+              
+              if (!data || data.length === 0) {
+                data = [{ x: 0, y: 0 }];
+              }
+              
+              return [{ 
+                name: widget.yVar || 'Data', 
+                data
+              }];
+            }
+          }
+        })()
       };
 
-      // Validate series data before returning
+      // Ensure categories and labels are properly set
       if (widget.chartType === 'pie') {
-        if (!Array.isArray(processedData) || processedData.length === 0) {
-          chartConfig.series = [1]; // Fallback
-          chartConfig.options.labels = ['No Data'];
-        } else {
-          chartConfig.options.labels = categories;
+        if (!chartConfig.options.labels || chartConfig.options.labels.length === 0) {
+          chartConfig.options.labels = categories && categories.length > 0 ? categories : ['No Data'];
         }
-      } else if (widget.chartType === 'heatmap') {
-        if (!Array.isArray(processedData) || processedData.length === 0) {
-          chartConfig.series = [{ name: 'No Data', data: [{ x: 'No Data', y: 0 }] }];
-        }
-      } else {
-        if (!Array.isArray(chartConfig.series) || chartConfig.series.length === 0 || 
-            !Array.isArray(chartConfig.series[0].data) || chartConfig.series[0].data.length === 0) {
-          chartConfig.series = [{ name: widget.yVar, data: [0] }];
-          chartConfig.options.xaxis.categories = ['No Data'];
+      } else if (widget.chartType !== 'scatter' && widget.chartType !== 'bubble' && widget.chartType !== 'heatmap') {
+        // For non-scatter charts, ensure xaxis categories are set
+        if (!chartConfig.options.xaxis.categories || chartConfig.options.xaxis.categories.length === 0) {
+          chartConfig.options.xaxis.categories = categories && categories.length > 0 ? categories : ['No Data'];
         }
       }
 
-      return chartConfig;
+      // Special handling for map data
+      if (widget.chartType === 'map') {
+        return {
+          options: {
+            chart: { id: `widget-${widget.id}`, type: 'map' },
+            title: { text: widget.title || `${widget.xVar} vs ${widget.yVar}` }
+          },
+          series: processedData // Map data points
+        };
+      }
+
+      // Final validation to ensure no undefined values in chart configuration
+      const validateChartConfig = (config) => {
+        if (!config || typeof config !== 'object') {
+          return false;
+        }
+
+        // Validate options
+        if (!config.options || typeof config.options !== 'object') {
+          return false;
+        }
+
+        // Validate series
+        if (!Array.isArray(config.series)) {
+          return false;
+        }
+
+        // Check for undefined values in series
+        for (const series of config.series) {
+          if (!series || typeof series !== 'object') {
+            return false;
+          }
+          if (series.data && !Array.isArray(series.data)) {
+            return false;
+          }
+          if (series.data) {
+            for (const point of series.data) {
+              if (point === undefined || point === null) {
+                return false;
+              }
+            }
+          }
+        }
+
+        // Validate specific options that could cause iteration issues
+        if (config.options.labels && !Array.isArray(config.options.labels)) {
+          return false;
+        }
+        if (config.options.xaxis && config.options.xaxis.categories && !Array.isArray(config.options.xaxis.categories)) {
+          return false;
+        }
+
+        return true;
+      };
+
+      // Clean up any undefined values
+      const cleanConfig = {
+        ...chartConfig,
+        options: {
+          ...chartConfig.options,
+          labels: Array.isArray(chartConfig.options.labels) ? chartConfig.options.labels.filter(label => label !== undefined && label !== null) : undefined,
+          xaxis: {
+            ...chartConfig.options.xaxis,
+            categories: Array.isArray(chartConfig.options.xaxis?.categories) ? chartConfig.options.xaxis.categories.filter(cat => cat !== undefined && cat !== null) : undefined
+          }
+        },
+        series: chartConfig.series.map(series => ({
+          ...series,
+          data: Array.isArray(series.data) ? series.data.filter(point => point !== undefined && point !== null) : []
+        }))
+      };
+
+      // Remove undefined properties
+      if (!cleanConfig.options.labels) {
+        delete cleanConfig.options.labels;
+      }
+      if (!cleanConfig.options.xaxis.categories) {
+        delete cleanConfig.options.xaxis.categories;
+      }
+
+      // Validate the cleaned configuration
+      if (!validateChartConfig(cleanConfig)) {
+        console.warn("Chart configuration validation failed, using fallback");
+        return {
+          options: {
+            chart: { id: `widget-${widget.id}`, type: 'bar' },
+            title: { text: 'Invalid Chart Data' },
+            xaxis: { categories: ['No Data'] }
+          },
+          series: [{ name: 'Data', data: [0] }]
+        };
+      }
+
+      return cleanConfig;
     } catch (err) {
       console.error("Chart generation error:", err);
       // Return a safe fallback configuration
@@ -670,7 +1110,7 @@ const getPlotOptions = (chartType) => {
   const [chartLoading, setChartLoading] = useState(false);
 
   useEffect(() => {
-    if (widget.xVar && widget.yVar && parsedData && !chartLoading) {
+    if (widget.xVar && widget.yVar && parsedData) {
       setChartLoading(true);
       setError(null);
       
@@ -689,7 +1129,7 @@ const getPlotOptions = (chartType) => {
           setChartLoading(false);
         });
     }
-  }, [generateChart, widget.xVar, widget.yVar, widget.chartType, parsedData, chartLoading]);
+  }, [generateChart, widget.xVar, widget.yVar, widget.zVar, widget.chartType, parsedData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Use effect to detect when widget is being auto-resized due to collisions
   useEffect(() => {
@@ -697,6 +1137,13 @@ const getPlotOptions = (chartType) => {
     const timer = setTimeout(() => setIsBeingResized(false), 300);
     return () => clearTimeout(timer);
   }, [widget.width, widget.height, widget.x, widget.y]);
+
+  // Auto-switch to compatible chart type when current one becomes incompatible
+  useEffect(() => {
+    if (widget.xVar && parsedData) {
+      // Note: Automatic chart type switching removed - users can now select any chart type
+    }
+  }, [widget.xVar, widget.yVar, widget.zVar, parsedData, widget.chartType, onUpdate, chartTypes, widget]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div 
@@ -860,13 +1307,21 @@ const getPlotOptions = (chartType) => {
           <div className="relative">
             <select
               value={widget.chartType}
-              onChange={(e) => onUpdate({ ...widget, chartType: e.target.value })}
+              onChange={(e) => {
+                onUpdate({ ...widget, chartType: e.target.value });
+              }}
               className="text-xs border rounded px-1 py-1 w-full pr-6 appearance-none"
               title={chartTypes.find(t => t.value === widget.chartType)?.description || ''}
             >
               {chartTypes.map(type => (
-                <option key={type.value} value={type.value} title={type.description}>
-                  {type.icon} {type.label}
+                <option 
+                  key={type.value} 
+                  value={type.value} 
+                  title={type.available ? type.description : 'Coming Soon'}
+                  disabled={!type.available}
+                  className={!type.available ? 'text-gray-400' : ''}
+                >
+                  {type.icon} {type.label}{!type.available ? ' (Coming Soon)' : ''}
                 </option>
               ))}
             </select>
@@ -877,16 +1332,41 @@ const getPlotOptions = (chartType) => {
           
           {/* Chart Type Help Text */}
           {widget.chartType && (
-            <div className="mt-1 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
-              <div className="font-medium text-blue-800 mb-1">
+            <div className={`mt-1 p-2 rounded text-xs ${
+              chartTypes.find(t => t.value === widget.chartType)?.available 
+                ? 'bg-blue-50 border border-blue-200' 
+                : 'bg-orange-50 border border-orange-200'
+            }`}>
+              <div className={`font-medium mb-1 ${
+                chartTypes.find(t => t.value === widget.chartType)?.available 
+                  ? 'text-blue-800' 
+                  : 'text-orange-800'
+              }`}>
                 {chartTypes.find(t => t.value === widget.chartType)?.icon} {chartTypes.find(t => t.value === widget.chartType)?.label}
+                {!chartTypes.find(t => t.value === widget.chartType)?.available && ' (Coming Soon)'}
               </div>
-              <div className="text-blue-600 text-xs leading-tight">
-                {chartTypes.find(t => t.value === widget.chartType)?.description}
+              <div className={`text-xs leading-tight ${
+                chartTypes.find(t => t.value === widget.chartType)?.available 
+                  ? 'text-blue-600' 
+                  : 'text-orange-600'
+              }`}>
+                {chartTypes.find(t => t.value === widget.chartType)?.available 
+                  ? chartTypes.find(t => t.value === widget.chartType)?.description
+                  : 'This advanced visualization type is currently under development and will be available in a future update.'
+                }
               </div>
-              <div className="text-blue-500 text-xs mt-1 font-medium">
-                {getChartTypeRecommendation(widget.chartType)}
-              </div>
+              {chartTypes.find(t => t.value === widget.chartType)?.available && (
+                <div className="text-blue-500 text-xs mt-1 font-medium">
+                  {getChartTypeRecommendation(widget.chartType)}
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Show total chart types count */}
+          {widget.xVar && (
+            <div className="mt-1 text-xs text-gray-500">
+              {chartTypes.length} chart types available
             </div>
           )}
         </div>
@@ -895,7 +1375,7 @@ const getPlotOptions = (chartType) => {
         <div className="flex-1 flex">
           {/* Drop Zones Panel */}
           <div className="w-24 mr-2 flex flex-col">
-            <div className="text-xs font-medium mb-2 text-gray-600">Axes</div>
+            <div className="text-xs font-medium mb-2 text-gray-600">Variables</div>
             <div className="space-y-2">
               <DroppableZone id={`x-axis-${widget.id}`} label="X">
                 {widget.xVar && (
@@ -926,11 +1406,55 @@ const getPlotOptions = (chartType) => {
                   </div>
                 )}
               </DroppableZone>
+
+              {/* Z-Axis for 3-variable charts */}
+              {['scatter', 'bubble', 'heatmap', 'map'].includes(widget.chartType) && (
+                <DroppableZone id={`z-axis-${widget.id}`} label={
+                  widget.chartType === 'bubble' ? 'Size' :
+                  widget.chartType === 'scatter' ? 'Color' :
+                  widget.chartType === 'heatmap' ? 'Value' :
+                  widget.chartType === 'map' ? 'Info' : 'Z'
+                }>
+                  {widget.zVar && (
+                    <div className="text-xs bg-purple-100 rounded px-2 py-1 relative group">
+                      <button
+                        onClick={() => onUpdate({ ...widget, zVar: null })}
+                        className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 flex items-center justify-center"
+                        style={{ fontSize: '8px' }}
+                      >
+                        ×
+                      </button>
+                      {widget.zVar}
+                    </div>
+                  )}
+                </DroppableZone>
+              )}
             </div>
           </div>
 
           {/* Chart Area */}
           <div className="flex-1">
+            {/* Incompatibility Warning */}
+            {(() => {
+              const incompatibilities = checkVariableCompatibility();
+              return incompatibilities ? (
+                <div className="mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+                  <div className="flex items-center text-yellow-700 mb-1">
+                    <span className="mr-1">⚠️</span>
+                    <span className="font-medium">Variable Compatibility Warning</span>
+                  </div>
+                  <ul className="text-yellow-600 text-xs space-y-1">
+                    {incompatibilities.map((msg, idx) => (
+                      <li key={idx}>• {msg}</li>
+                    ))}
+                  </ul>
+                  <div className="text-yellow-600 text-xs mt-1">
+                    Chart will still render but may not display optimally.
+                  </div>
+                </div>
+              ) : null;
+            })()}
+            
             {loading ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-xs text-gray-500">📊 Loading data...</div>
@@ -960,23 +1484,147 @@ const getPlotOptions = (chartType) => {
                   </button>
                 </div>
               </div>
-            ) : chartData && widget.xVar && widget.yVar ? (
-              <div className="relative h-full flex items-center justify-center">
-                <div style={{ 
-                  width: '100%', 
-                  height: '100%',
-                  maxWidth: '100%',
-                  maxHeight: '100%'
-                }}>
-                  <Chart
-                    options={chartData.options}
-                    series={chartData.series}
-                    type={widget.chartType}
-                    width="100%"
-                    height="100%"
-                  />
+            ) : chartData && chartData.options && chartData.series && widget.xVar && widget.yVar ? (
+              // Check if chart type is available
+              !chartTypes.find(t => t.value === widget.chartType)?.available ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center bg-orange-50 border border-orange-200 rounded-lg p-6 max-w-sm">
+                    <div className="text-4xl mb-3">🚧</div>
+                    <div className="text-orange-800 font-medium mb-2">Coming Soon</div>
+                    <div className="text-orange-600 text-sm mb-3">
+                      {chartTypes.find(t => t.value === widget.chartType)?.icon} {chartTypes.find(t => t.value === widget.chartType)?.label} visualization is currently under development.
+                    </div>
+                    <div className="text-orange-500 text-xs">
+                      Please try another chart type for now.
+                    </div>
+                  </div>
                 </div>
+              ) : (
+              <div className="relative h-full flex items-center justify-center">
+                {widget.chartType === 'map' ? (
+                  <div style={{ 
+                    width: '100%', 
+                    height: '100%',
+                    maxWidth: '100%',
+                    maxHeight: '100%'
+                  }}>
+                    <MapContainer
+                      center={chartData.series && chartData.series.length > 0 && 
+                              chartData.series[0].lat !== undefined && chartData.series[0].lng !== undefined ? 
+                        [chartData.series[0].lat, chartData.series[0].lng] : [40.7128, -74.0060]} // Default to NYC
+                      zoom={2}
+                      style={{ height: '100%', width: '100%' }}
+                    >
+                      <TileLayer
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      />
+                      {chartData.series && chartData.series.length > 0 ? 
+                        chartData.series
+                          .filter(point => point.lat !== undefined && point.lng !== undefined && 
+                                          !isNaN(point.lat) && !isNaN(point.lng))
+                          .map((point, index) => (
+                            <Marker key={index} position={[point.lat, point.lng]}>
+                              <Popup>
+                                <div>
+                                  <strong>{point.label || 'Unknown'}</strong><br/>
+                                  Value: {point.value || 'N/A'}
+                                </div>
+                              </Popup>
+                            </Marker>
+                          )) : 
+                        <div style={{ 
+                          position: 'absolute', 
+                          top: '50%', 
+                          left: '50%', 
+                          transform: 'translate(-50%, -50%)',
+                          background: 'white',
+                          padding: '10px',
+                          borderRadius: '5px',
+                          boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
+                          zIndex: 1000
+                        }}>
+                          <div className="text-sm text-gray-600">
+                            No valid geographic coordinates found.<br/>
+                            Ensure your data has 'lat'/'latitude' and 'lng'/'longitude' columns.
+                          </div>
+                        </div>
+                      }
+                    </MapContainer>
+                  </div>
+                ) : (
+                  <div style={{ 
+                    width: '100%', 
+                    height: '100%',
+                    maxWidth: '100%',
+                    maxHeight: '100%'
+                  }}>
+                    <Chart
+                      options={(() => {
+                        // Final validation and cleaning of chart options
+                        const options = chartData.options || {};
+                        const cleanOptions = {
+                          ...options,
+                          chart: options.chart || { type: widget.chartType === 'bubble' ? 'scatter' : 
+                                                       widget.chartType === 'histogram' ? 'column' :
+                                                       widget.chartType === 'boxplot' ? 'boxPlot' :
+                                                       widget.chartType === 'pie' ? 'donut' :
+                                                       widget.chartType }
+                        };
+                        
+                        // Clean undefined values from nested objects
+                        Object.keys(cleanOptions).forEach(key => {
+                          if (cleanOptions[key] === undefined) {
+                            delete cleanOptions[key];
+                          } else if (typeof cleanOptions[key] === 'object' && cleanOptions[key] !== null) {
+                            Object.keys(cleanOptions[key]).forEach(subKey => {
+                              if (cleanOptions[key][subKey] === undefined) {
+                                delete cleanOptions[key][subKey];
+                              }
+                            });
+                          }
+                        });
+                        
+                        return cleanOptions;
+                      })()}
+                      series={(() => {
+                        // Final validation and cleaning of series data
+                        const series = chartData.series || [];
+                        if (!Array.isArray(series)) {
+                          return [];
+                        }
+                        
+                        return series.map(s => {
+                          if (!s || typeof s !== 'object') {
+                            return { name: 'Data', data: [] };
+                          }
+                          
+                          const cleanSeries = {
+                            name: s.name || 'Data',
+                            data: []
+                          };
+                          
+                          if (Array.isArray(s.data)) {
+                            cleanSeries.data = s.data.filter(point => 
+                              point !== undefined && point !== null
+                            );
+                          }
+                          
+                          return cleanSeries;
+                        }).filter(s => s.data.length > 0);
+                      })()}
+                      type={widget.chartType === 'bubble' ? 'scatter' : 
+                           widget.chartType === 'histogram' ? 'column' :
+                           widget.chartType === 'boxplot' ? 'boxPlot' :
+                           widget.chartType === 'pie' ? 'donut' :
+                           widget.chartType}
+                      width="100%"
+                      height="100%"
+                    />
+                  </div>
+                )}
               </div>
+              )
             ) : (
               <div className="flex items-center justify-center h-full text-xs text-gray-400">
                 📋 Drag variables from the left panel
@@ -1079,6 +1727,10 @@ export default function ProjectVisualizationDashboard() {
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
   const [isGuideExpanded, setIsGuideExpanded] = useState(true);
+  const [isFilesExpanded, setIsFilesExpanded] = useState(true);
+  const [lastSeenRefreshTime, setLastSeenRefreshTime] = useState(null);
+  const [datasetFiles, setDatasetFiles] = useState({}); // Store files for each dataset
+  const [loadedFiles, setLoadedFiles] = useState({}); // Track which files have been loaded for each dataset
 
   /** Render data summary panel */
   const renderDataSummary = () => {
@@ -1235,35 +1887,198 @@ export default function ProjectVisualizationDashboard() {
   const [exporting, setExporting] = useState(false);
 
   // ----- LOAD ALL VARIABLES FROM DATASETS -----
-  const loadAllVariables = async (datasets) => {
+  const loadAllVariables = useCallback(async (datasets) => {
+    console.log('🔍 loadAllVariables called with datasets:', datasets);
     const variables = {};
     const columnTypes = {};
+    const filesMap = {};
+    const loadedFilesMap = {};
+    
+    if (!datasets || datasets.length === 0) {
+      console.log('⚠️ No datasets provided to loadAllVariables');
+      setAllVariables({});
+      setAllColumnTypes({});
+      setDatasetFiles({});
+      setLoadedFiles({});
+      return;
+    }
     
     for (const dataset of datasets) {
       try {
-        const response = await getDatasetFile(dataset.id);
-        const csvText = await response.Body.text();
-        const rows = parseCSV(csvText);
-        const samplingResult = sampleData(rows, 5000, 2000);
+        console.log(`📊 Processing dataset: ${dataset.name} (ID: ${dataset.id})`);
+        console.log(`📂 Dataset key/path: ${dataset.key || dataset.path || dataset.id}`);
         
-        if (samplingResult.data.length > 0) {
-          const columns = samplingResult.data[0];
-          const types = detectColumnTypes(samplingResult.data);
+        // Use the key field (folder path) instead of ID to find the dataset files
+        const datasetPath = dataset.key || dataset.path || dataset.id;
+        
+        // Get all files for this dataset
+        const files = await listDatasetFiles(datasetPath);
+        console.log(`📁 Found ${files.length} files for dataset ${dataset.name}:`, files.map(f => f.name));
+        
+        if (files.length > 0) {
+          // Store files for this dataset
+          filesMap[dataset.id] = files;
+          loadedFilesMap[dataset.id] = {};
           
-          variables[dataset.id] = {
-            datasetName: dataset.name,
-            columns: columns
-          };
-          columnTypes[dataset.id] = types;
+          // Load variables from the first file by default
+          const firstFile = files[0];
+          await loadFileVariables(dataset, firstFile, variables, columnTypes, loadedFilesMap);
+        } else {
+          console.log(`⚠️ No files found for dataset ${dataset.name}`);
         }
       } catch (err) {
-        console.error(`Failed to load variables for dataset ${dataset.name}:`, err);
+        console.error(`❌ Failed to load variables for dataset ${dataset.name}:`, err);
       }
     }
     
+    console.log('🔍 Final variables object:', variables);
+    console.log('🔍 Final columnTypes object:', columnTypes);
+    console.log('🔍 Final filesMap object:', filesMap);
+    console.log('🔍 Final loadedFilesMap object:', loadedFilesMap);
+    
     setAllVariables(variables);
     setAllColumnTypes(columnTypes);
+    setDatasetFiles(filesMap);
+    setLoadedFiles(loadedFilesMap);
+  }, []);
+
+  // Helper function to load variables from a specific file
+  const loadFileVariables = async (dataset, file, variables, columnTypes, loadedFilesMap) => {
+    try {
+      console.log(`📄 Loading variables from file: ${file.name} for dataset: ${dataset.name}`);
+      
+      const response = await getDatasetFileContent(file.key);
+      const csvText = await response.Body.text();
+      const rows = parseCSV(csvText);
+      const samplingResult = sampleData(rows, 5000, 2000);
+      
+      if (samplingResult.data.length > 0) {
+        const columns = samplingResult.data[0];
+        const types = detectColumnTypes(samplingResult.data);
+        
+        console.log(`✅ Loaded ${columns.length} variables from file ${file.name}:`, columns);
+        
+        // Initialize dataset entry if it doesn't exist
+        if (!variables[dataset.id]) {
+          variables[dataset.id] = {
+            datasetName: dataset.name,
+            files: {},
+            allColumns: []
+          };
+          columnTypes[dataset.id] = {};
+        }
+        
+        // Add file-specific variables
+        variables[dataset.id].files[file.key] = {
+          fileName: file.name,
+          columns: columns
+        };
+        
+        // Add to combined columns list (avoid duplicates)
+        columns.forEach(column => {
+          const columnKey = `${column}__${file.name}`;
+          if (!variables[dataset.id].allColumns.find(col => col.key === columnKey)) {
+            variables[dataset.id].allColumns.push({
+              key: columnKey,
+              name: column,
+              fileName: file.name,
+              fileKey: file.key,
+              displayName: `${column} (${file.name})`
+            });
+          }
+        });
+        
+        // Store column types with file prefix
+        columns.forEach(column => {
+          const columnKey = `${column}__${file.name}`;
+          columnTypes[dataset.id][columnKey] = types[column];
+        });
+        
+        // Mark file as loaded
+        loadedFilesMap[dataset.id][file.key] = true;
+      }
+    } catch (error) {
+      console.error(`❌ Failed to load variables from file ${file.name}:`, error);
+    }
   };
+
+  // ----- HANDLE FILE SELECTION CHANGE -----
+  const handleFileSelection = async (datasetId, selectedFileKey) => {
+    console.log(`📂 Loading additional file for dataset ${datasetId}: ${selectedFileKey}`);
+    
+    try {
+      // Check if file is already loaded
+      if (loadedFiles[datasetId] && loadedFiles[datasetId][selectedFileKey]) {
+        console.log(`ℹ️ File ${selectedFileKey} is already loaded for dataset ${datasetId}`);
+        return;
+      }
+      
+      // Get the selected file info
+      const files = datasetFiles[datasetId] || [];
+      const selectedFile = files.find(f => f.key === selectedFileKey);
+      
+      if (selectedFile) {
+        // Load variables from the selected file
+        const variables = { ...allVariables };
+        const columnTypes = { ...allColumnTypes };
+        const loadedFilesMap = { ...loadedFiles };
+        
+        // Get dataset info
+        const dataset = projectDatasets.find(d => d.id === datasetId);
+        const datasetInfo = { 
+          id: datasetId, 
+          name: dataset?.name || variables[datasetId]?.datasetName || 'Unknown'
+        };
+        
+        await loadFileVariables(datasetInfo, selectedFile, variables, columnTypes, loadedFilesMap);
+        
+        console.log(`✅ Loaded additional variables from file ${selectedFile.name} for dataset ${datasetInfo.name}`);
+        
+        // Update state
+        setAllVariables(variables);
+        setAllColumnTypes(columnTypes);
+        setLoadedFiles(loadedFilesMap);
+      }
+    } catch (error) {
+      console.error(`❌ Failed to load variables for selected file:`, error);
+    }
+  };
+
+  // ----- REFRESH DATASETS AND VARIABLES -----
+  const refreshDatasetsAndVariables = useCallback(async () => {
+    setLoading(true);
+    try {
+      console.log('🔄 Refreshing datasets and variables...');
+      
+      // Reload project datasets directly from the project
+      const project = await getProject(projectId);
+      const datasets = project.datasets || [];
+      
+      // Filter out any datasets that might not exist anymore
+      const filtered = datasets.filter(dataset => 
+        dataset && dataset.id && dataset.name && dataset.key
+      );
+      
+      console.log(`📊 Found ${filtered.length} datasets to refresh`);
+      
+      // Update the datasets state
+      setProjectDatasets(filtered);
+      
+      // Reload all variables from the updated datasets
+      await loadAllVariables(filtered);
+      
+      console.log('✅ Dashboard variables refreshed successfully');
+      
+      // Show success message or notification here if needed
+      return filtered;
+    } catch (err) {
+      console.error("❌ Failed to refresh datasets:", err);
+      setError(`Failed to refresh datasets: ${err.message}`);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId, loadAllVariables]);
 
   // ----- NAVIGATION -----
   const returnToProject = useCallback(() => {
@@ -1624,12 +2439,19 @@ export default function ProjectVisualizationDashboard() {
         let filtered = location.state?.projectDatasets;
         let project;
         
+        console.log('🔍 Dashboard fetchProjectData - location.state:', location.state);
+        console.log('🔍 Dashboard fetchProjectData - projectDatasets from state:', filtered);
+        
         if (!filtered) {
+          console.log('🔍 No datasets in location.state, fetching from project...');
           const [projectResult, datasets] = await Promise.all([
             getProject(projectId),
             listDatasets(),
           ]);
           project = projectResult;
+          
+          console.log('🔍 Project result:', project);
+          console.log('🔍 All datasets:', datasets);
           
           if (!project.selectedDatasets || project.selectedDatasets.length === 0) {
             setError("No datasets linked to this project.");
@@ -1643,6 +2465,8 @@ export default function ProjectVisualizationDashboard() {
           // If datasets came from state, still need to fetch project for dashboard config
           project = await getProject(projectId);
         }
+        
+        console.log('🔍 Filtered datasets for dashboard:', filtered);
         
         setProjectData(project);
         setProjectDatasets(filtered);
@@ -1669,7 +2493,22 @@ export default function ProjectVisualizationDashboard() {
     }
 
     fetchProjectData();
-  }, [projectId, location.state]);
+  }, [projectId, location.state, loadAllVariables]);
+
+  // ----- REFRESH TIME CHANGE DETECTION -----
+  useEffect(() => {
+    const incomingRefreshTime = location.state?.refreshTime;
+    
+    if (incomingRefreshTime && incomingRefreshTime !== lastSeenRefreshTime) {
+      console.log('🔄 Detected project refresh, updating dashboard variables...');
+      setLastSeenRefreshTime(incomingRefreshTime);
+      
+      // Trigger a refresh of datasets and variables
+      if (projectDatasets.length > 0) {
+        refreshDatasetsAndVariables();
+      }
+    }
+  }, [location.state?.refreshTime, lastSeenRefreshTime, refreshDatasetsAndVariables, projectDatasets.length]);
 
   // ----- COLLISION DETECTION AND RESOLUTION -----
   const checkCollisions = (updatedWidget, allWidgets) => {
@@ -1914,6 +2753,9 @@ export default function ProjectVisualizationDashboard() {
           } else if (dropId.includes('y-axis')) {
             updates.yVar = variableName;
             updates.datasetId = datasetId; // Ensure dataset is set
+          } else if (dropId.includes('z-axis')) {
+            updates.zVar = variableName;
+            updates.datasetId = datasetId; // Ensure dataset is set
           }
           return updates;
         }
@@ -2111,6 +2953,64 @@ export default function ProjectVisualizationDashboard() {
         </div>
       </div>
 
+      {/* File Loading Panel - Top */}
+      <div className="px-6 mb-4">
+        <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg">
+          <div 
+            className="flex items-center justify-between p-4 cursor-pointer hover:bg-gradient-to-r hover:from-green-100 hover:to-blue-100 rounded-t-lg"
+            onClick={() => setIsFilesExpanded(!isFilesExpanded)}
+          >
+            <div className="flex items-center">
+              <div className="text-2xl mr-3">📁</div>
+              <h3 className="text-lg font-semibold text-gray-800">Dataset Files</h3>
+            </div>
+            <div className={`transition-transform duration-300 text-gray-600 ${isFilesExpanded ? 'rotate-180' : ''}`}>
+              ⌄
+            </div>
+          </div>
+          
+          <div className={`transition-all duration-300 overflow-hidden ${isFilesExpanded ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'}`}>
+            <div className="px-4 pb-4 max-h-96 overflow-y-auto">
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                {Object.entries(allVariables).map(([datasetId, datasetInfo]) => (
+                  <div key={datasetId} className="bg-white rounded-lg border border-gray-200 p-3">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">{datasetInfo.datasetName}</h4>
+                    
+                    {/* Available Files with Load Buttons */}
+                    {datasetFiles[datasetId] && datasetFiles[datasetId].length > 0 && (
+                      <div className="space-y-2">
+                        {datasetFiles[datasetId].map(file => {
+                          const isLoaded = loadedFiles[datasetId] && loadedFiles[datasetId][file.key];
+                          return (
+                            <div key={file.key} className="flex items-center justify-between text-xs">
+                              <span className={`flex-1 ${isLoaded ? 'text-green-700 font-medium' : 'text-gray-600'}`}>
+                                {isLoaded ? '✓ ' : ''}{file.name}
+                              </span>
+                              {!isLoaded ? (
+                                <button
+                                  onClick={() => handleFileSelection(datasetId, file.key)}
+                                  className="ml-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs font-medium"
+                                >
+                                  Load
+                                </button>
+                              ) : (
+                                <span className="ml-2 px-3 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
+                                  Loaded
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Data Summary Panel */}
       <div className="px-6">
         {renderDataSummary()}
@@ -2141,7 +3041,7 @@ export default function ProjectVisualizationDashboard() {
                   </h4>
                   <ul className="space-y-1 text-gray-600">
                     <li>• <strong>Scatter Plot:</strong> Show relationships & correlations</li>
-                    <li>• <strong>Bubble Chart:</strong> 3-dimensional data comparison</li>
+                    <li className="text-gray-400">• <strong>Bubble Chart:</strong> 3-dimensional data comparison <span className="text-xs bg-orange-100 text-orange-600 px-1 rounded">Coming Soon</span></li>
                     <li>• <strong>Line Chart:</strong> Trends over time/sequence</li>
                   </ul>
                 </div>
@@ -2163,8 +3063,8 @@ export default function ProjectVisualizationDashboard() {
                   </h4>
                   <ul className="space-y-1 text-gray-600">
                     <li>• <strong>Histogram:</strong> Show data distribution patterns</li>
-                    <li>• <strong>Box Plot:</strong> Visualize quartiles & outliers</li>
-                    <li>• <strong>Heatmap:</strong> Correlation matrix (multiple numeric)</li>
+                    <li className="text-gray-400">• <strong>Box Plot:</strong> Visualize quartiles & outliers <span className="text-xs bg-orange-100 text-orange-600 px-1 rounded">Coming Soon</span></li>
+                    <li className="text-gray-400">• <strong>Heatmap:</strong> Correlation matrix (multiple numeric) <span className="text-xs bg-orange-100 text-orange-600 px-1 rounded">Coming Soon</span></li>
                   </ul>
                 </div>
               </div>
@@ -2174,7 +3074,7 @@ export default function ProjectVisualizationDashboard() {
                   <div className="text-amber-600 mr-2 mt-0.5">💡</div>
                   <div className="text-sm text-amber-800">
                     <strong>Pro Tips:</strong>
-                    <span className="ml-2">Use scatter plots for correlation analysis • Choose bar charts for category comparisons • Try histograms to understand data distribution • Heatmaps work best with 3+ numeric variables</span>
+                    <span className="ml-2">Use scatter plots for correlation analysis • Choose bar charts for category comparisons • Try histograms to understand data distribution • More advanced charts coming soon!</span>
                   </div>
                 </div>
               </div>
@@ -2202,25 +3102,44 @@ export default function ProjectVisualizationDashboard() {
               </div>
             </div>
             <div className="space-y-4 flex-1 overflow-y-auto">
-              {Object.entries(allVariables).map(([datasetId, datasetInfo]) => (
-                <div key={datasetId} className="border-b border-gray-100 pb-3 last:border-b-0">
-                  <h4 className="text-sm font-medium text-gray-600 mb-2">{datasetInfo.datasetName}</h4>
-                  <div className="space-y-1">
-                    {datasetInfo.columns.map(column => (
-                      <GlobalDraggableField
-                        key={`${datasetId}::${column}`}
-                        id={`${datasetId}::${column}`}
-                        label={column}
-                        datasetName={datasetInfo.datasetName}
-                        columnType={allColumnTypes[datasetId]?.[column]}
-                      />
-                    ))}
+              {Object.entries(allVariables).map(([datasetId, datasetInfo]) => {
+                // Only show datasets that have loaded files
+                const hasLoadedFiles = loadedFiles[datasetId] && 
+                  Object.values(loadedFiles[datasetId]).some(loaded => loaded);
+                
+                if (!hasLoadedFiles) return null;
+                
+                return (
+                  <div key={datasetId} className="border-b border-gray-100 pb-3 last:border-b-0">
+                    <h4 className="text-sm font-medium text-gray-600 mb-2">{datasetInfo.datasetName}</h4>
+                    
+                    {/* Show only variables from loaded files */}
+                    <div className="space-y-1">
+                      {datasetInfo.allColumns?.filter(columnInfo => {
+                        // Only show columns from loaded files
+                        return loadedFiles[datasetId] && loadedFiles[datasetId][columnInfo.fileKey];
+                      }).map(columnInfo => (
+                        <GlobalDraggableField
+                          key={`${datasetId}::${columnInfo.key}`}
+                          id={`${datasetId}::${columnInfo.key}`}
+                          label={columnInfo.displayName}
+                          datasetName={datasetInfo.datasetName}
+                          columnType={allColumnTypes[datasetId]?.[columnInfo.key]}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-              {Object.keys(allVariables).length === 0 && !loading && (
+                );
+              })}
+              {Object.keys(allVariables).filter(datasetId => {
+                const hasLoadedFiles = loadedFiles[datasetId] && 
+                  Object.values(loadedFiles[datasetId]).some(loaded => loaded);
+                return hasLoadedFiles;
+              }).length === 0 && !loading && (
                 <div className="text-center text-gray-500 text-sm py-8">
-                  No variables available
+                  <div className="text-4xl mb-2">📁</div>
+                  <div>No files loaded</div>
+                  <div className="text-xs mt-1">Use the file loading panel above to load dataset files</div>
                 </div>
               )}
             </div>
@@ -2272,6 +3191,8 @@ export default function ProjectVisualizationDashboard() {
                   datasets={projectDatasets}
                   allWidgets={widgets}
                   resolveCollisions={resolveCollisions}
+                  loadedFiles={loadedFiles}
+                  allColumnTypes={allColumnTypes}
                 />
               </div>
             ))}

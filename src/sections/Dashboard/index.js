@@ -1,12 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaRobot } from 'react-icons/fa';
-import { FiUser, FiSend, FiLoader, FiExternalLink, FiDatabase, FiPlus } from 'react-icons/fi';
+import { FiUser, FiSend, FiLoader, FiExternalLink } from 'react-icons/fi';
 import StatCard from './widgets/StatCard';
 import ActivityFeed from './widgets/ActivityFeed';
 import MyDatasetList from '../../components/MyDatasetList';
 import AIDatasetAssistant from '../../components/AIDatasetAssistant';
-import UploadMethodSelector from '../../components/UploadMethodSelector';
 import bedrockAIService from '../../services/bedrockAIService';
 import { listProjects } from '../../services/projectService';
 import { listDatasets, listUserUploads } from '../../utils/storageUtils';
@@ -29,9 +28,6 @@ export default function DashboardPage() {
   const [inputMessage, setInputMessage] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const messagesEndRef = useRef(null);
-
-  // Upload method selector state
-  const [showUploadSelector, setShowUploadSelector] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -227,12 +223,17 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen flex flex-col page-bg dashboard-container p-6 space-y-6">
       {/* Top Welcome Card */}
-      <div className="flex justify-between items-center card">
+      <div className="flex justify-between items-center p-6 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 dark:from-blue-600 dark:to-purple-700 text-white shadow-lg">
         <div>
-          <h2 className="card-heading text-textPrimary-light dark:text-textPrimary-dark">Welcome back!</h2>
-          <p className="subtext text-subtle">Here's what's happening in your workspace</p>
+          <h2 className="text-2xl font-bold text-white">Welcome to your research hub!</h2>
+          <p className="text-blue-100 dark:text-purple-100">Track your datasets, projects, and research progress</p>
         </div>
-        <button className="btn-accent text-sm">+ New Project</button>
+        <button 
+          onClick={() => navigate('/projects/create')}
+          className="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-blue-50 transition-colors"
+        >
+          + New Project
+        </button>
       </div>
 
       {/* Stats Section */}
@@ -247,45 +248,16 @@ export default function DashboardPage() {
           ))
         ) : (
           <>
-            <StatCard label="My Dashboards" value={stats.dashboards} icon="📊" />
-            <StatCard label="Bookmarked Datasets" value={stats.bookmarks} icon="🔖" />
-            <StatCard label="Uploaded Files" value={stats.uploads} icon="📁" />
-            <StatCard label="Generated Reports" value={stats.reports} icon="📄" />
+            <StatCard label="Active Projects" value={stats.dashboards} icon="📊" colorClass="blue" />
+            <StatCard label="My Datasets" value={stats.bookmarks} icon="🗂️" colorClass="green" />
+            <StatCard label="Total Files" value={stats.uploads} icon="📁" colorClass="purple" />
+            <StatCard label="AI Reports" value={stats.reports} icon="🤖" colorClass="orange" />
           </>
         )}
       </div>
 
       {/* My Datasets */}
       <div className="card">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <FiDatabase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h3 className="section-heading mb-1">My Datasets</h3>
-              <p className="text-sm text-textSecondary-light dark:text-textSecondary-dark">
-                Manage and explore your uploaded datasets
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button 
-              onClick={() => navigate('/explore')}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <FiExternalLink className="h-4 w-4" />
-              Explore All
-            </button>
-            <button 
-              onClick={() => setShowUploadSelector(true)}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm border border-border-light dark:border-border-dark rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-            >
-              <FiPlus className="h-4 w-4" />
-              Add Dataset
-            </button>
-          </div>
-        </div>
         <MyDatasetList />
       </div>
 
@@ -429,13 +401,6 @@ export default function DashboardPage() {
           currentProjectDatasets={[]}
         />
       )}
-
-      {/* Upload Method Selector Modal */}
-      <UploadMethodSelector
-        isOpen={showUploadSelector}
-        onClose={() => setShowUploadSelector(false)}
-        onInternalUpload={() => navigate('/upload')}
-      />
     </div>
   );
 }

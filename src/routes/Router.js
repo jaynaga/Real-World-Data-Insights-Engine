@@ -10,6 +10,7 @@ import SingleDatasetOverview from './sections/Explore/SingleDatasetOverview';
 import SingleProject from './sections/Projects/SingleProject';
 import ProjectVisualization from './sections/Projects/ProjectVisualization';
 import ProjectNotebookIDE from './pages/ProjectNotebookIDE';
+import SharedProjectPage from './pages/SharedProjectPage';
 import Settings from './pages/Settings';
 // ...existing code...
 
@@ -37,8 +38,8 @@ function Router() {
       <Route path="/projects/:id" element={<SingleProject />} />
       {console.log('Rendering route: /projects/:id/visualization')}
       <Route path="/projects/:id/visualization" element={<ProjectVisualization />} />
-      // ...existing code...
-      // ...existing code...
+      {console.log('Rendering route: /projects/shared/:shareId')}
+      <Route path="/projects/shared/:shareId" element={<SharedProjectPage />} />
       {console.log('Rendering route: /settings')}
       <Route path="/settings" element={<Settings />} />
       {console.log('Rendering route: * (NotFound)')}

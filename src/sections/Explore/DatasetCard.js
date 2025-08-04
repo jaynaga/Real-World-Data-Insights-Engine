@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaThumbtack } from 'react-icons/fa';
-import { FiPlus, FiEye, FiDownload } from 'react-icons/fi';
+import { FiExternalLink } from 'react-icons/fi';
 
 export default function DatasetCard({ index }) {
   const navigate = useNavigate();
@@ -23,9 +23,16 @@ export default function DatasetCard({ index }) {
       <div>Jun 1, 2023</div>
       <div>247</div>
       <div className="flex gap-2">
-        <FiPlus className="cursor-pointer text-accent-light dark:text-accent-dark" />
-        <FiEye className="cursor-pointer text-accent-light dark:text-accent-dark" />
-        <FiDownload className="cursor-pointer text-accent-light dark:text-accent-dark" />
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate('/explore/dataset');
+          }}
+          className="flex items-center gap-1 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+        >
+          <FiExternalLink />
+          Open
+        </button>
       </div>
     </div>
   );

@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext';
-import { FaSave, FaUser, FaKey, FaEnvelope, FaPhone, FaSun, FaMoon } from 'react-icons/fa';
+import { useTutorial } from '../context/TutorialContext';
+import { FaSave, FaUser, FaKey, FaEnvelope, FaPhone, FaSun, FaMoon, FaQuestionCircle } from 'react-icons/fa';
 import { MdDevices } from 'react-icons/md';
+import DemoModeToggle from '../components/DemoModeToggle';
 
 export default function Settings() {
   const { settings, updateSettings } = useSettings();
+  const { showTutorial } = useTutorial();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('profile');
   const [isDirty, setIsDirty] = useState(false);
@@ -33,7 +36,8 @@ export default function Settings() {
   const tabs = [
     { id: 'profile', label: 'Profile', icon: <FaUser /> },
     { id: 'appearance', label: 'Appearance', icon: <FaSun /> },
-    { id: 'security', label: 'Security', icon: <FaKey /> }
+    { id: 'security', label: 'Security', icon: <FaKey /> },
+    { id: 'help', label: 'Help', icon: <FaQuestionCircle /> }
   ];
 
   const handleInputChange = (section, field) => (e) => {
@@ -305,6 +309,115 @@ export default function Settings() {
     </div>
   );
 
+  const renderHelpSettings = () => (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Getting Started</h3>
+        <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
+          <div className="flex items-start space-x-4">
+            <FaQuestionCircle className="w-8 h-8 text-blue-500 flex-shrink-0 mt-1" />
+            <div className="flex-1">
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                Welcome Tutorial
+              </h4>
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
+                New to RWDE? Take our interactive tutorial to learn about uploading datasets, 
+                creating projects, and exploring data. Perfect for getting started or refreshing 
+                your knowledge.
+              </p>
+              <button
+                onClick={showTutorial}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              >
+                Start Tutorial
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Resources</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Documentation</h4>
+            <p className="text-gray-600 dark:text-gray-300 text-sm mb-3">
+              Comprehensive guides and API references
+            </p>
+            <a 
+              href="#" 
+              className="text-blue-500 hover:text-blue-600 text-sm font-medium"
+            >
+              View Docs →
+            </a>
+          </div>
+          
+          <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Video Tutorials</h4>
+            <p className="text-gray-600 dark:text-gray-300 text-sm mb-3">
+              Step-by-step video guides for common tasks
+            </p>
+            <a 
+              href="#" 
+              className="text-blue-500 hover:text-blue-600 text-sm font-medium"
+            >
+              Watch Videos →
+            </a>
+          </div>
+          
+          <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Community Forum</h4>
+            <p className="text-gray-600 dark:text-gray-300 text-sm mb-3">
+              Get help from other users and experts
+            </p>
+            <a 
+              href="#" 
+              className="text-blue-500 hover:text-blue-600 text-sm font-medium"
+            >
+              Join Forum →
+            </a>
+          </div>
+          
+          <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Contact Support</h4>
+            <p className="text-gray-600 dark:text-gray-300 text-sm mb-3">
+              Need personalized help? Reach out to our team
+            </p>
+            <a 
+              href="mailto:support@rwde.com" 
+              className="text-blue-500 hover:text-blue-600 text-sm font-medium"
+            >
+              Contact Us →
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Coming Soon</h3>
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-lg border border-blue-200 dark:border-blue-700">
+          <div className="space-y-4">
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Kaggle Integration</h4>
+                <p className="text-gray-600 dark:text-gray-300 text-sm">
+                  Direct integration with Kaggle datasets and competitions. Import datasets seamlessly 
+                  and participate in competitions directly from the RWDE platform.
+                </p>
+                <div className="mt-2">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    In Development
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-surface-dark p-6">
       <div className="max-w-4xl mx-auto">
@@ -333,6 +446,7 @@ export default function Settings() {
           {activeTab === 'profile' && renderProfileSettings()}
           {activeTab === 'appearance' && renderAppearanceSettings()}
           {activeTab === 'security' && renderSecuritySettings()}
+          {activeTab === 'help' && renderHelpSettings()}
         </div>
 
         {/* Save/Cancel Buttons */}
