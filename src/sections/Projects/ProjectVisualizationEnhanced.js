@@ -174,13 +174,11 @@ export default function ProjectVisualization() {
   const [projectDatasets, setProjectDatasets] = useState([]);
   const [showDataPreview, setShowDataPreview] = useState(false);
   const [dataFilter, setDataFilter] = useState("");
-  const [datasetSize, setDatasetSize] = useState(0);
   const [sampledData, setSampledData] = useState(null);
   const [isDataSampled, setIsDataSampled] = useState(false);
 
   // Configuration for dataset size limits
   const MAX_ROWS_FOR_CHARTS = 10000; // Maximum rows for chart generation
-  const MAX_ROWS_FOR_PREVIEW = 5000;  // Maximum rows for data preview
   const SAMPLE_SIZE = 5000;           // Sample size for large datasets
 
   // Available chart types with descriptions
@@ -207,7 +205,6 @@ export default function ProjectVisualization() {
       const samplingResult = sampleData(rows, MAX_ROWS_FOR_CHARTS, SAMPLE_SIZE);
       const processedRows = samplingResult.data;
       
-      setDatasetSize(samplingResult.originalSize);
       setIsDataSampled(samplingResult.isSampled);
       setSampledData(samplingResult);
       

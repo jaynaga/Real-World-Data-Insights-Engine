@@ -2,12 +2,10 @@ import React, { useState, useMemo } from 'react';
 import {
   FiSearch,
   FiFilter,
-  FiDownload,
   FiMaximize2,
   FiMinimize2,
   FiChevronLeft,
   FiChevronRight,
-  FiMoreVertical,
   FiGrid,
   FiBarChart
 } from 'react-icons/fi';
@@ -26,7 +24,7 @@ const DataViewer = ({ csvData, isLoading, error }) => {
     if (csvData?.columns && selectedColumns.size === 0) {
       setSelectedColumns(new Set(csvData.columns.slice(0, 6))); // Show first 6 columns by default
     }
-  }, [csvData?.columns]);
+  }, [csvData?.columns, selectedColumns.size]);
 
   // Filter and search data
   const filteredData = useMemo(() => {

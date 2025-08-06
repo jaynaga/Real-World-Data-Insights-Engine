@@ -374,7 +374,6 @@ export default function Upload() {
       const files = formData.files || [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const fileExtension = getFileExtension(file.name);
         const fileName = `${datasetPath}/${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
 
         console.log(`Uploading data file ${i + 1}/${files.length}:`, fileName);
@@ -451,11 +450,6 @@ export default function Upload() {
     } finally {
       setUploading(false);
     }
-  };
-
-  const getFileExtension = (filename) => {
-    const lastDot = filename.lastIndexOf('.');
-    return lastDot === -1 ? '' : filename.substring(lastDot);
   };
 
   const formatFileSize = (bytes) => {

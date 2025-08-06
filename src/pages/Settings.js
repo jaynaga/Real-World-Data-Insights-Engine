@@ -5,7 +5,6 @@ import { useTutorial } from '../context/TutorialContext';
 import { FaSave, FaUser, FaKey, FaEnvelope, FaPhone, FaSun, FaMoon, FaQuestionCircle, FaInfoCircle } from 'react-icons/fa';
 import { MdDevices } from 'react-icons/md';
 import { motion } from 'framer-motion';
-import DemoModeToggle from '../components/DemoModeToggle';
 
 export default function Settings() {
   const { settings, updateSettings } = useSettings();
@@ -125,6 +124,10 @@ export default function Settings() {
       case 'appearance':
         // No validation needed for appearance tab
         break;
+        
+      default:
+        // No validation for other tabs
+        break;
     }
 
     setErrors(newErrors);
@@ -157,6 +160,9 @@ export default function Settings() {
               password: formData.authentication.newPassword
             };
           }
+          break;
+        default:
+          // No updates needed for other tabs
           break;
       }
 
@@ -627,12 +633,12 @@ export default function Settings() {
             <p className="text-gray-600 dark:text-gray-300 text-sm mb-3">
               Comprehensive guides and API references
             </p>
-            <a 
-              href="#" 
+            <button 
+              type="button"
               className="text-blue-500 hover:text-blue-600 text-sm font-medium"
             >
               View Docs →
-            </a>
+            </button>
           </div>
           
           <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
@@ -653,12 +659,12 @@ export default function Settings() {
             <p className="text-gray-600 dark:text-gray-300 text-sm mb-3">
               Get help from other users and experts
             </p>
-            <a 
-              href="#" 
+            <button 
+              type="button"
               className="text-blue-500 hover:text-blue-600 text-sm font-medium"
             >
               Join Forum →
-            </a>
+            </button>
           </div>
           
           <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">

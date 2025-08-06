@@ -9,7 +9,6 @@ import {
   FiLoader,
   FiCheck,
   FiPlus,
-  FiFolderPlus,
   FiExternalLink
 } from 'react-icons/fi';
 import { HiOutlinePlusCircle } from 'react-icons/hi';

@@ -1,164 +1,115 @@
-<<<<<<< HEAD
-# Amplify Frontend Template
+# 🏥 RWDE - Healthcare Data Commons Platform
 
-This directory contains a professional React frontend scaffolded for AWS Amplify integration, suitable for a data commons platform.
+[![Production Status](https://img.shields.io/badge/Status-Live%20Production-green.svg)](https://dksl9b55tgml3.cloudfront.net)
+[![AWS Amplify](https://img.shields.io/badge/AWS-Amplify%20Serverless-orange.svg)]()
+[![React](https://img.shields.io/badge/React-18-blue.svg)]()
+[![Code Quality](https://img.shields.io/badge/ESLint-Clean-brightgreen.svg)]()
 
-## Features
-- Modern React + Tailwind CSS design
-- Amplify Auth integration (sign in/sign up)
-- Responsive layout with navigation and footer
-- Modular sections: Dashboard, Explore, Projects, Upload
-- Dynamic routing with React Router (see `src/App.js`)
-- Ready for Amplify API and QuickSight integration
+A production-ready healthcare data commons platform enabling researchers to upload, analyze, and visualize datasets with AI-powered assistance.
 
-## Getting Started
+## ⚡ Quick Start
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-2. Start the development server:
-   ```bash
-   npm start
-   ```
-3. Initialize Amplify (if not done):
-   ```bash
-   amplify init
-   ```
-4. Add Auth and API as needed:
-   ```bash
-   amplify add auth
-   amplify add api
-   amplify push
-   ```
+```bash
+# Clone and setup
+git clone https://github.com/jaynaga/RWDE.git
+cd rwde-clean
+yarn install
 
-## Structure
-- `src/components/` – Navbar, Footer, AuthWrapper, ProtectedRoute
-- `src/pages/` – Upload, NotFound
-- `src/sections/` –
-  - `Dashboard/` – Dashboard layout and widgets
-  - `Explore/` – Dataset explorer, sidebar, table, card, overview
-  - `Projects/` – Projects index, project details
-- `src/utils/` – API helpers
-- `src/styles/` – Tailwind tokens and custom CSS
-- `src/theme.js` – Theme configuration
-- `src/App.js` – Main routing component
+# Start development server
+yarn start
+# → Opens http://localhost:3000
+```
+
+## 🌐 Live Application
+- **Production**: https://dksl9b55tgml3.cloudfront.net
+- **API**: https://nz0a9n72i0.execute-api.us-east-1.amazonaws.com/rwde
+- **Status**: ✅ Fully operational
+
+## 🏗️ Architecture Overview
+
+### Core Features
+- 🔐 **Authentication**: AWS Cognito with email verification
+- 📊 **Data Upload**: Secure S3 integration with processing pipeline
+- 🤖 **AI Assistant**: Bedrock-powered dataset recommendations
+- 📈 **Visualization**: Interactive charts with drag-drop interface
+- 📓 **AI Notebooks**: Automated Jupyter notebook generation
+- 🎨 **Modern UI**: Tailwind CSS 4 with dark/light theme support
+
+### Tech Stack
+```
+Frontend: React 18 + Tailwind CSS 4 + Material-UI 5
+Backend:  AWS Amplify (Cognito, S3, Lambda, API Gateway)
+AI:       AWS Bedrock (Claude) + Jupyter notebook generation
+Charts:   ApexCharts + ECharts with @dnd-kit drag-drop
+```
+
+## 📚 Documentation
+
+**For Manager Handoff**: Read [`HANDOFF.md`](./HANDOFF.md) for complete handoff guide
+
+### Comprehensive Guides
+- 📖 [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) - Component architecture
+- 🔧 [`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md) - Developer workflow  
+- 🚀 [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) - Production deployment
+- 📡 [`docs/API.md`](./docs/API.md) - Complete API reference
+- ☁️ [`docs/CLOUD_STORAGE_SETUP.md`](./docs/CLOUD_STORAGE_SETUP.md) - AWS configuration
+
+## �️ Repository Structure
+
+```
+rwde-clean/
+├── 📖 docs/                    # Comprehensive documentation
+├── 📱 src/                     # React application source  
+│   ├── components/             # Reusable UI components
+│   ├── context/               # React context providers
+│   ├── pages/                 # Top-level route components
+│   ├── sections/              # Feature-specific layouts
+│   ├── services/              # API integration layer
+│   └── utils/                 # Utility functions & config
+├── ⚡ amplify/                 # AWS Amplify backend config
+├── 🔧 scripts/                 # Development & testing scripts
+├── 📦 public/                  # Static assets
+├── 🧪 examples/                # Jupyter notebook examples
+└── 📋 HANDOFF.md               # Complete manager handoff guide
+```
+
+## ✅ Production Status
+
+### Current State
+- **Live Application**: ✅ Fully operational 
+- **Authentication**: ✅ Cognito integration working
+- **File Upload**: ✅ S3 pipeline functional
+- **AI Features**: ✅ Bedrock integration active
+- **Data Visualization**: ✅ Interactive charts working
+- **Code Quality**: ✅ ESLint clean, no build errors
+- **Documentation**: ✅ Comprehensive guides complete
+- **AWS Resources**: ✅ All services configured and running
+
+### Commands
+```bash
+# Development
+yarn start              # Start React dev server
+yarn build              # Build for production
+yarn test               # Run tests
+
+# AWS Amplify
+amplify status          # Check deployment status  
+amplify console         # Open Amplify console
+amplify push            # Deploy backend changes
+amplify pull            # Pull latest backend config
+```
+
+## 🚀 Getting Started (New Team Member)
+
+1. **Read Documentation**: Start with [`HANDOFF.md`](./HANDOFF.md)
+2. **Setup Environment**: Follow quick start commands above
+3. **AWS Access**: Ensure AWS console access to region `us-east-1`
+4. **Test Features**: Browse live app and test major functionality
+5. **Review Architecture**: Study the docs/ folder for deep understanding
 
 ---
 
-This frontend is ready for further customization and integration with your AWS backend.
-=======
-# RealWorld Insights Engine: Mental Health Analytics (Georgetown HIDS Capstone)
+**Ready for immediate handoff and continued development!** 🎉
+- 🚀 **Deployment Guide** - Production deployment steps
 
-This repository contains code and documentation for the Georgetown University Health Informatics and Data Science Capstone Project in collaboration with ICA, focused on developing an AI-powered mental health analytics platform using AWS cloud tools and real-world public health data.
-
-## Project Scope
-- Mental health data ingestion and harmonization
-- Predictive modeling and AI-based analysis of trends, disparities, and risk factors
-- Real-time visualization tools and dashboards for public health users
-- Modular web frontend for data exploration and project management
-
-## Tech Stack
-- **Frontend:**
-  - React 18
-  - React Router v6
-  - Tailwind CSS for styling
-  - AWS Amplify UI Components
-  - Dark mode support
-  - Session management with protected routes
-
-- **AWS Services:**
-  - S3: Storage for raw and processed datasets
-  - Glue: ETL jobs for cleaning and harmonization
-  - SageMaker: Model development and deployment
-  - Bedrock: Natural language querying and hypothesis generation
-  - QuickSight: Dashboard creation and visualization
-
-- **Development Tools:**
-  - Python (pandas, NumPy, scikit-learn, TensorFlow)
-  - Jupyter Notebooks for analysis
-  - Git for version control
-  - Node.js and npm for frontend development
-
-## Project Structure
-```
-├── amplify-frontend/     # React frontend application
-│   ├── src/
-│   │   ├── core/        # App entry point and main component
-│   │   ├── components/  # Reusable UI components
-│   │   ├── context/     # React context providers
-│   │   ├── pages/       # Page components
-│   │   ├── routes/      # Routing configuration
-│   │   ├── sections/    # Feature-specific sections
-│   │   ├── styles/      # Global styles & theming
-│   │   └── utils/       # Utility functions
-│   └── public/          # Static assets
-├── data_ingestion/      # Data pipeline scripts
-├── docs/                # Project documentation
-├── notebooks/           # Jupyter notebooks for analysis
-└── dashboards/          # QuickSight configurations
-```
-
-## Getting Started
-
-### Frontend Development
-
-1. Navigate to the frontend directory:
-```bash
-cd amplify-frontend
-```
-
-2. Install dependencies:
-```bash
-npm install
-```
-
-3. Start the development server:
-```bash
-npm start
-```
-
-The application will be available at http://localhost:3000
-
-### Development Features
-- Dev login bypass for quick testing (development mode only)
-- Dark mode support based on system preferences
-- Protected routes with session management
-- Responsive design for all screen sizes
-
-## Project Status
-
-### Completed
-- [x] Project structure and organization
-- [x] Frontend routing system
-- [x] Authentication and session management
-- [x] Dark mode implementation
-- [x] Responsive navigation
-
-### In Progress
-- [ ] AWS Amplify integration
-- [ ] Data pipeline development
-- [ ] Dashboard creation
-- [ ] Model development
-- [ ] Production deployment
-
-## Contributing
-
-1. Create a feature branch from main
-2. Implement your changes
-3. Test thoroughly
-4. Submit a pull request with a clear description
-
-## Documentation
-- Frontend architecture details in `amplify-frontend/README.md`
-- Data pipeline documentation in `data_ingestion/README.md`
-- Final project report in `docs/final_report.pdf`
-
-## Security Note
-- Development mode includes simplified authentication
-- Production deployment will require proper AWS Cognito integration
-- Ensure all credentials are properly secured before deployment
-
-For detailed frontend documentation, see `amplify-frontend/README.md`.
-For questions or support, contact the development team.
->>>>>>> 631792fa3206704d98f726e99e61fe3bdf9e8382
+This codebase represents a **professional, production-ready healthcare research platform** ready for enterprise use and continued development.

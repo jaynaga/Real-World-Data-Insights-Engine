@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaArrowLeft, FaShareAlt, FaDownload, FaDatabase, FaHospitalAlt, FaChartBar, FaPills, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaArrowLeft, FaShareAlt, FaDownload, FaDatabase } from 'react-icons/fa';
 import { HiOutlinePlusCircle } from 'react-icons/hi';
 import { MdOutlineDashboard } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';

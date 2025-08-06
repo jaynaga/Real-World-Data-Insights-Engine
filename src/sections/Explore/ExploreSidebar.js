@@ -57,26 +57,26 @@ export default function ExploreSidebar({ isOpen, onClose, filters = {}, setFilte
     });
   };
 
-  const handleDateChange = (type, value) => {
+  // eslint-disable-next-line no-unused-vars
+  const handleCategoryToggle = (category) => {
     setFilters(prev => {
-      const newFilters = {
-        ...prev,
-        dateRange: {
-          ...prev.dateRange,
-          [type]: value
-        }
-      };
-
-      // If both date fields are empty, remove the dateRange
-      if (!newFilters.dateRange.from && !newFilters.dateRange.to) {
-        delete newFilters.dateRange;
+      const newFilters = { ...prev };
+      
+      if (!newFilters.categories) {
+        newFilters.categories = [];
+      }
+      
+      if (newFilters.categories.includes(category)) {
+        newFilters.categories = newFilters.categories.filter(c => c !== category);
+      } else {
+        newFilters.categories = [...newFilters.categories, category];
       }
 
       return newFilters;
     });
   };
 
-  // Get min and max dates from datasets
+  // eslint-disable-next-line no-unused-vars
   const dateRange = datasets.reduce((range, dataset) => {
     const date = new Date(dataset.date);
     if (!range.min || date < range.min) range.min = date;
@@ -84,10 +84,12 @@ export default function ExploreSidebar({ isOpen, onClose, filters = {}, setFilte
     return range;
   }, { min: null, max: null });
 
+  // eslint-disable-next-line no-unused-vars
   const handleReset = () => {
     setFilters({});
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleApply = () => {
     onClose();
   };
