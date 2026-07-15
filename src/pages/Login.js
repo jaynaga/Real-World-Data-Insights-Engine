@@ -117,6 +117,13 @@ export default function Login() {
     }
   };
 
+  const handleDemoContinue = () => {
+    localStorage.setItem('rwde_guest_access', 'true');
+    showTutorial();
+    const from = location.state?.from?.pathname || '/';
+    navigate(from, { replace: true });
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-900 dark:to-indigo-900">
       {/* Animated background elements */}
@@ -277,6 +284,13 @@ export default function Login() {
           )}
           {!showForgotPassword && (
             <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
+              {!showVerification && !isSignUp && (
+                <div className="rounded-xl bg-gradient-to-r from-amber-50 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/30 p-4 border border-amber-200 dark:border-amber-700">
+                  <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                    Demo mode is enabled. You can click through without entering a real username or password.
+                  </p>
+                </div>
+              )}
               {error && (
                 <div className="rounded-xl bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-800/30 p-4 border border-red-200 dark:border-red-700 animate-shake">
                   <div className="flex items-center">
@@ -408,6 +422,18 @@ export default function Login() {
                   {showVerification ? 'Verify Account' : isSignUp ? 'Create Account' : 'Sign In'}
                 </button>
               </div>
+
+              {!showVerification && !isSignUp && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={handleDemoContinue}
+                    className="w-full py-3 px-4 border border-blue-300 dark:border-blue-700 text-sm font-semibold rounded-xl text-blue-700 dark:text-blue-300 bg-blue-50/80 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors duration-200"
+                  >
+                    Continue to Demo (No Login Required)
+                  </button>
+                </div>
+              )}
 
               {!showVerification && (
                 <div className="flex flex-col space-y-3 pt-4 border-t border-gray-200 dark:border-gray-700">
