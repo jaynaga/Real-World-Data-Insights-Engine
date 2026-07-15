@@ -4,6 +4,7 @@
 [![AWS Amplify](https://img.shields.io/badge/AWS-Amplify%20Serverless-orange.svg)]()
 [![React](https://img.shields.io/badge/React-18-blue.svg)]()
 [![Code Quality](https://img.shields.io/badge/ESLint-Clean-brightgreen.svg)]()
+[![Try the Live Demo](https://img.shields.io/badge/Try%20the%20Live%20Demo-Click%20Here-7c3aed?style=for-the-badge)](https://dksl9b55tgml3.cloudfront.net)
 
 A production-ready healthcare data commons platform enabling researchers to upload, analyze, and visualize datasets with AI-powered assistance.
 
