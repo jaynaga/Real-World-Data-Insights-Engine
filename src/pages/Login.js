@@ -119,7 +119,11 @@ export default function Login() {
 
   const handleDemoContinue = () => {
     sessionStorage.setItem('rwde_guest_access', 'true');
-    showTutorial();
+    try {
+      showTutorial();
+    } catch (err) {
+      console.error('Tutorial launch error:', err);
+    }
     const from = location.state?.from?.pathname || '/';
     navigate(from, { replace: true });
   };
@@ -287,7 +291,7 @@ export default function Login() {
               {!showVerification && !isSignUp && (
                 <div className="rounded-xl bg-gradient-to-r from-amber-50 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/30 p-4 border border-amber-200 dark:border-amber-700">
                   <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                    Guest access is available. Click the "Continue to Demo" button below to explore without logging in.
+                    Guest access is available. Click the "Continue to Demo (No Login Required)" button below to explore without logging in.
                   </p>
                 </div>
               )}
